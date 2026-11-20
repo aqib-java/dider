@@ -124,6 +124,27 @@ export function migrate(db: Database) {
   db.exec(
     "CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status, uploader_id);"
   );
+
+  // Label terkurasi (admin yang mendefinisikan) + relasi many-to-many.
+  // Kontributor hanya memilih dari daftar ini — mencegah label liar seperti
+  // "DM" vs "digital marketing" yang dulu jadi alasan kategori bebas dihapus.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS labels (
+      id TEXT PRIMARY KEY,
+      nama TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS project_labels (
+      project_id TEXT NOT NULL,
+      label_id TEXT NOT NULL,
+      PRIMARY KEY (project_id, label_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_project_labels_label
+      ON project_labels(label_id);
+  `);
 }
 
 /** Isi slug untuk baris lama (dan yang masih NULL) supaya unik & stabil. */

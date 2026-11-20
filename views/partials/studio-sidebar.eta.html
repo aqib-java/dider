@@ -29,6 +29,12 @@
     <a href="/studio/dokumen/trash" class="<%= base %> <%= isTrash ? on : idle %>" <%= isTrash ? 'aria-current="page"' : '' %>>
       <i class="bx bx-trash text-lg leading-none"></i> Trash
     </a>
+    <% if (it.user && it.user.role === "admin") { %>
+      <% const isLabel = p.indexOf("/studio/label") === 0; %>
+      <a href="/studio/label" class="<%= base %> <%= isLabel ? on : idle %>" <%= isLabel ? 'aria-current="page"' : '' %>>
+        <i class="bx bx-purchase-tag text-lg leading-none"></i> Label
+      </a>
+    <% } %>
     <p class="px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wider text-slate-500">LAINNYA</p>
     <a href="/" class="<%= base %> <%= idle %>">
       <i class="bx bx-link-external text-lg leading-none"></i> Lihat Situs

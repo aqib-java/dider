@@ -18,6 +18,7 @@ export type Project = {
   updated_at: string;
   archived_at: string | null;
   deleted_at: string | null;
+  labels: string | null;
 };
 
 export type ProjectSummary = Pick<
@@ -27,6 +28,8 @@ export type ProjectSummary = Pick<
 > & {
   /** Nama tampilan uploader (full_name atau username). NULL kalau data lama. */
   uploader: string | null;
+  /** Nama-nama label dipisah "||" (GROUP_CONCAT); NULL kalau belum ada. */
+  labels: string | null;
 };
 
 /** Urutan rak buku: 'latest' = terbaru, 'popular' = paling banyak dibaca. */
@@ -38,7 +41,10 @@ export type SortKey = ShelfSort | "oldest" | "trashed";
 const SHELF_SELECT = `
   SELECT p.id, p.nama, p.slug, p.pdf_path, p.kategori, p.status, p.views, p.uploader_id,
          p.created_at, p.updated_at, p.archived_at, p.deleted_at,
-         COALESCE(u.full_name, u.username) AS uploader
+         COALESCE(u.full_name, u.username) AS uploader,
+         (SELECT GROUP_CONCAT(l.nama, '||')
+            FROM project_labels pl JOIN labels l ON l.id = pl.label_id
+           WHERE pl.project_id = p.id) AS labels
   FROM projects p
   LEFT JOIN users u ON u.id = p.uploader_id
 `;
@@ -108,6 +114,8 @@ export class ProjectModel {
       q?: string;
       status?: Status;
       uploaderId?: string | null;
+      /** Slug label; hanya dokumen berlabel ini yang diambil. */
+      labelSlug?: string;
       limit?: number;
     } = {}
   ): ProjectSummary[] {
@@ -126,6 +134,11 @@ export class ProjectModel {
     if (opts.uploaderId) {
       where += " AND p.uploader_id = ?";
       params.push(opts.uploaderId);
+    }
+    if (opts.labelSlug) {
+      where +=
+        " AND p.id IN (SELECT pl.project_id FROM project_labels pl JOIN labels l ON l.id = pl.label_id WHERE l.slug = ?)";
+      params.push(opts.labelSlug);
     }
     if (q) {
       where += " AND (p.nama LIKE ? OR COALESCE(u.full_name, u.username) LIKE ?)";

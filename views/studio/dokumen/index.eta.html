@@ -32,9 +32,22 @@
     class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600"><i class="bx bx-plus"></i> Upload</button>
 </div>
 
-<p class="text-sm text-slate-500 mb-4">
-  <%= it.scopeLabel %> · <%= it.dokumen.length %> <%= it.status === "archived" ? "diarsipkan" : "terbit" %>
-</p>
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <p class="text-sm text-slate-500">
+    <%= it.scopeLabel %> · <%= it.dokumen.length %> <%= it.status === "archived" ? "diarsipkan" : "terbit" %>
+  </p>
+  <% if (it.semuaLabel.length > 0) { %>
+    <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+      <% const dasar = it.status === "archived" ? "/studio/dokumen?status=archived" : "/studio/dokumen"; %>
+      <a href="<%= dasar %>"
+        class="text-xs font-semibold px-2.5 py-1 rounded-full <%= it.labelAktif === "" ? "bg-navy-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200" %>">Semua label</a>
+      <% it.semuaLabel.forEach(function (l) { %>
+        <a href="<%= dasar %><%= dasar.indexOf("?") === -1 ? "?" : "&" %>label=<%= l.slug %>"
+          class="text-xs font-semibold px-2.5 py-1 rounded-full <%= it.labelAktif === l.slug ? "bg-navy-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200" %>"><%= l.nama %></a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
 
 <% if (it.dokumen.length === 0) { %>
   <div class="bg-white border border-dashed border-slate-300 rounded-xl px-6 py-16 text-center">
@@ -68,6 +81,14 @@
             <% if (it.isAdmin && d.uploader) { %> · oleh <%= d.uploader %><% } %>
             <% if (d.status === "archived") { %> · Diarsipkan <%= it.formatTanggal(d.archived_at) %><% } %>
           </p>
+          <% const labelDok = (d.labels || "").split("||").filter(Boolean); %>
+          <% if (labelDok.length > 0) { %>
+            <div class="flex flex-wrap gap-1.5 mt-1.5">
+              <% labelDok.forEach(function (nama) { %>
+                <span class="bg-navy-50 text-navy-800 text-[11px] font-semibold px-2 py-0.5 rounded-full"><%= nama %></span>
+              <% }) %>
+            </div>
+          <% } %>
         </div>
         <div class="flex items-center gap-4 shrink-0">
           <% if (d.status === "published") { %>
@@ -81,8 +102,40 @@
               <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-upload"></i> Terbitkan</button>
             </form>
           <% } %>
+          <button type="button" onclick="document.getElementById('label-<%= d.id %>').showModal()"
+            class="text-slate-600 hover:underline text-sm"><i class="bx bx-purchase-tag"></i> Label</button>
           <button type="button" onclick="document.getElementById('delete-<%= d.id %>').showModal()"
             class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus</button>
+          <dialog id="label-<%= d.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-sm shadow-2xl">
+            <form method="post" action="/studio/dokumen/<%= d.id %>/label" class="p-6 space-y-4">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h2 class="font-bold text-navy-900">Label dokumen</h2>
+                  <p class="text-sm text-slate-500 truncate"><%= d.nama %></p>
+                </div>
+                <button type="button" onclick="this.closest('dialog').close()" aria-label="Tutup"
+                  class="text-2xl text-slate-400 hover:text-slate-700 leading-none"><i class="bx bx-x"></i></button>
+              </div>
+              <% if (it.semuaLabel.length === 0) { %>
+                <p class="text-sm text-slate-500">
+                  Belum ada label. <% if (it.isAdmin) { %><a href="/studio/label" class="text-navy-700 hover:underline">Buat label dulu</a>.<% } else { %>Minta admin CCIT membuat label.<% } %>
+                </p>
+              <% } else { %>
+                <% const terpilih = it.labelMap.get(d.id) || new Set(); %>
+                <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  <% it.semuaLabel.forEach(function (l) { %>
+                    <label class="flex items-center gap-2.5 text-sm cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50">
+                      <input type="checkbox" name="label" value="<%= l.id %>" <%= terpilih.has(l.id) ? "checked" : "" %>
+                        class="w-4 h-4 rounded border-slate-300 text-navy-900 focus:ring-gold-500" />
+                      <span><%= l.nama %></span>
+                    </label>
+                  <% }) %>
+                </div>
+                <button type="submit"
+                  class="w-full bg-navy-900 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-navy-800">Simpan Label</button>
+              <% } %>
+            </form>
+          </dialog>
           <dialog id="delete-<%= d.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-xs shadow-2xl">
             <form method="post" action="/studio/dokumen/<%= d.id %>/delete" class="w-80 p-6 space-y-4">
               <h2 class="font-bold text-navy-900">Hapus dokumen?</h2>

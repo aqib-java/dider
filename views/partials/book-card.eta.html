@@ -30,5 +30,13 @@
     <p class="text-[11px] text-slate-400 mt-0.5">
       oleh <%= it.kartu.uploader ?? "Anonim" %> · <%= it.formatTanggal(it.kartu.created_at) %>
     </p>
+    <% const labelKartu = (it.kartu.labels || "").split("||").filter(Boolean); %>
+    <% if (labelKartu.length > 0) { %>
+      <div class="flex flex-wrap gap-1 mt-1.5">
+        <% labelKartu.slice(0, 2).forEach(function (nama) { %>
+          <span class="bg-navy-50 text-navy-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"><%= nama %></span>
+        <% }) %>
+      </div>
+    <% } %>
   </div>
 </a>

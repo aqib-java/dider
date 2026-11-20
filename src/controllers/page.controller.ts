@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { existsSync } from "fs";
 import type { Db } from "../db";
 import { ProjectModel, type Project } from "../models/project.model";
+import { LabelModel } from "../models/label.model";
 import { view, redirect, flashError } from "../view";
 
 /** Controller web: halaman publik — homepage + reader flipbook (/baca/:id). */
@@ -30,11 +31,28 @@ export function pageController(db: Db) {
     const urut =
       rawSort === "popular" || rawSort === "oldest" ? rawSort : ("latest" as const);
     const q = (c.req.query("q") ?? "").trim();
-    const dokumen = projects ? projects.search({ sort: urut, q }) : [];
+    const labelSlug = (c.req.query("label") ?? "").trim();
+
+    const labels = db.sqlite ? new LabelModel(db.sqlite) : null;
+    const labelDipakai = labels ? labels.listWithCount().filter((l) => l.jumlah > 0) : [];
+    // Abaikan label yang tidak dikenal supaya URL asal-asalan tidak menyaring kosong.
+    const labelAktif = labelDipakai.some((l) => l.slug === labelSlug) ? labelSlug : "";
+
+    const dokumen = projects
+      ? projects.search({ sort: urut, q, labelSlug: labelAktif || undefined })
+      : [];
     const total = projects ? projects.list().length : 0;
     // Penanda "POPULER" di kartu: 3 besar views (konsisten dengan homepage).
     const populer = projects ? projects.listShelf("popular").slice(0, 3).map((d) => d.id) : [];
-    return view(c, "homepage/jelajah", { dokumen, urut, q, total, populer });
+    return view(c, "homepage/jelajah", {
+      dokumen,
+      urut,
+      q,
+      total,
+      populer,
+      labelDipakai,
+      labelAktif,
+    });
   });
 
   // GET /majalah/:slug — reader flipbook (URL publik yang enak dibaca).
