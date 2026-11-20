@@ -110,6 +110,28 @@ describe("Web — auth", () => {
     expect(html).toContain('name="username"');
   });
 
+  test("semua input teks di form auth punya placeholder", async () => {
+    const app = createTestApp();
+
+    const login = await (await app.request("/studio/login")).text();
+    expect(login).toContain('id="username" name="username" required placeholder="cth. hudya"');
+    expect(login).toContain('id="password" name="password" type="password" required placeholder="Masukkan password kamu"');
+
+    const register = await (await app.request("/studio/register")).text();
+    expect(register).toContain('id="full_name" name="full_name" placeholder="cth. Hudya Ramadhana"');
+    expect(register).toContain('id="username" name="username" required placeholder="cth. hudya"');
+    expect(register).toContain('id="password" name="password" type="password" required placeholder="Minimal 6 karakter"');
+
+    // Tidak ada input teks/email/search/password yang lolos tanpa placeholder.
+    for (const html of [login, register]) {
+      const inputs = html.match(/<input[^>]*>/g) ?? [];
+      for (const tag of inputs) {
+        if (/type="(hidden|checkbox|radio|file)"/.test(tag)) continue;
+        expect(tag).toContain("placeholder=");
+      }
+    }
+  });
+
   test("GET /studio/register → form ter-render", async () => {
     const app = createTestApp();
     const res = await app.request("/studio/register");

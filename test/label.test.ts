@@ -227,6 +227,40 @@ describe("Label — halaman admin & penempelan", () => {
     cleanup(id);
   });
 
+  test("dialog label memakai multi-pilih yang bisa dicari (bukan combobox)", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app);
+    const id = await upload(app, cookie, "Majalah Picker");
+    for (const nama of ["Profil Prodi", "Digital Marketing"]) {
+      await post(app, "/studio/label", cookie, { nama });
+    }
+
+    const html = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+
+    // Kolom pencarian label di dalam dialog
+    expect(html).toContain("data-label-picker");
+    expect(html).toContain("data-label-search");
+    expect(html).toContain('placeholder="Cari label…"');
+
+    // Daftar label bisa difilter (item membawa nama untuk pencarian klien)
+    expect(html).toContain('data-label-item data-nama="profil prodi"');
+    expect(html).toContain('data-label-item data-nama="digital marketing"');
+
+    // Label terpilih tampil sebagai chip
+    expect(html).toContain("data-label-chips");
+    expect(html).toContain("data-label-empty");
+
+    // Kontrak ke server tidak berubah: checkbox name="label" (multi nilai)
+    expect(html).toContain('type="checkbox" name="label"');
+
+    // Pencarian tetap menyaring di klien, bukan reload
+    expect(html).toContain("applyFilter");
+    expect(html).toContain("renderChips");
+
+    await post(app, `/studio/dokumen/${id}/trash-and-delete`, cookie);
+    cleanup(id);
+  });
+
   test("slug label dipakai di URL filter", async () => {
     expect(slugify("Profil Prodi")).toBe("profil-prodi");
     expect(slugify("Profil Prodi")).toBe("profil-prodi");

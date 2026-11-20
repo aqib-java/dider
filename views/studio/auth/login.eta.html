@@ -8,12 +8,12 @@
   <form method="post" action="/studio/login" class="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
     <div>
       <label for="username" class="block text-sm font-medium mb-1">Username</label>
-      <input id="username" name="username" required value="<%= it.old.username ?? '' %>"
+      <input id="username" name="username" required placeholder="cth. hudya" value="<%= it.old.username ?? '' %>"
         class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
     </div>
     <div>
       <label for="password" class="block text-sm font-medium mb-1">Password</label>
-      <input id="password" name="password" type="password" required
+      <input id="password" name="password" type="password" required placeholder="Masukkan password kamu"
         class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
     </div>
     <button type="submit" class="w-full bg-navy-900 text-white font-semibold py-2.5 rounded-lg hover:bg-navy-800">Login</button>

@@ -126,24 +126,59 @@ describe("Akun — manajemen user (admin)", () => {
     expect(baris).toContain("Admin CCIT");
   });
 
-  test("reset password: password lama gagal, password baru berhasil", async () => {
+  test("reset password: perlu konfirmasi & minimal 6 karakter", async () => {
     const app = createTestApp();
     const adminCookie = await registerUser(app, "adminccit");
     await registerUser(app, "mahasiswa");
     const id = await userId(app, adminCookie, "mahasiswa");
 
-    // Password terlalu pendek ditolak
-    await post(app, `/studio/akun/${id}/password`, adminCookie, { password: "123" });
+    const loginDengan = async (password: string) =>
+      app.request("/studio/login", {
+        method: "POST",
+        headers: formPostHeaders,
+        body: new URLSearchParams({ username: "mahasiswa", password }).toString(),
+      });
 
-    const res = await post(app, `/studio/akun/${id}/password`, adminCookie, { password: "barubaru123" });
+    // 1) Terlalu pendek ditolak
+    const pendek = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "12345",
+      password_confirm: "12345",
+    });
+    let page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(pendek)}` },
+    });
+    expect(await page.text()).toContain("minimal 6 karakter");
+    expect((await loginDengan("12345")).status).toBe(200); // belum berubah
+
+    // 2) Konfirmasi tidak sama ditolak
+    const beda = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+      password_confirm: "barubaru124",
+    });
+    page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(beda)}` },
+    });
+    expect(await page.text()).toContain("Konfirmasi password tidak sama");
+    expect((await loginDengan("barubaru123")).status).toBe(200); // belum berubah
+
+    // 3) Tanpa kolom konfirmasi juga ditolak (guard server, bukan cuma klien)
+    const tanpaKonfirmasi = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+    });
+    page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(tanpaKonfirmasi)}` },
+    });
+    expect(await page.text()).toContain("Konfirmasi password tidak sama");
+
+    // 4) Pasangan yang valid berhasil
+    const res = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+      password_confirm: "barubaru123",
+    });
     expect(res.status).toBe(302);
 
     // Login dengan password baru
-    const loginBaru = await app.request("/studio/login", {
-      method: "POST",
-      headers: formPostHeaders,
-      body: new URLSearchParams({ username: "mahasiswa", password: "barubaru123" }).toString(),
-    });
+    const loginBaru = await loginDengan("barubaru123");
     expect(loginBaru.status).toBe(302);
     expect(loginBaru.headers.get("location")).toBe("/studio");
 
@@ -155,6 +190,22 @@ describe("Akun — manajemen user (admin)", () => {
     });
     expect(loginLama.status).toBe(200);
     expect(await loginLama.text()).toContain("Username atau password salah");
+  });
+
+  test("dialog reset password punya kolom konfirmasi & aturan minimal 6 karakter", async () => {
+    const app = createTestApp();
+    const adminCookie = await registerUser(app, "adminccit");
+    await registerUser(app, "mahasiswa");
+
+    const html = await (await app.request("/studio/akun", { headers: { cookie: adminCookie } })).text();
+
+    expect(html).toContain('name="password_confirm"');
+    expect(html).toContain('placeholder="Ulangi password baru"');
+    expect(html).toContain('placeholder="Minimal 6 karakter"');
+    expect(html).toContain("Konfirmasi password baru");
+    expect(html).toContain("data-pw-error");
+    // Aturan 6 karakter ditegakkan di klien (minlength) dan server
+    expect(html).toContain('minlength="6"');
   });
 
   test("kontributor tidak bisa mengubah peran atau mereset password", async () => {
@@ -244,5 +295,118 @@ describe("Akun — manajemen user (admin)", () => {
     // Kartu "Buka Halaman Publik" di dashboard dihapus (tidak berulang)
     expect(dash).not.toContain("Buka Halaman Publik");
     expect(dash).toContain("Ringkasan");
+  });
+
+  test("aksi baris dokumen: tanpa underline, kursor tangan", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+
+    const form = new FormData();
+    form.append("nama", "Dokumen Aksi");
+    form.append("pdf", new File(["%PDF-1.4\n%%EOF"], "a.pdf", { type: "application/pdf" }));
+    await app.request("/studio/dokumen", {
+      method: "POST",
+      headers: { cookie, origin: "http://localhost:3000" },
+      body: form,
+    });
+
+    const html = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    const id = html.split('data-doc-id="')[1].slice(0, 36);
+    const baris = html.split('data-doc-id="').find((r) => r.startsWith(id))!;
+
+    // Tombol aksi tidak lagi memakai underline saat hover, dan menandakan bisa diklik
+    expect(baris).not.toContain("hover:underline");
+    expect(baris).toContain("cursor-pointer");
+
+    // Hapus permanen (tab Trash) memakai dialog konfirmasi, bukan confirm() browser
+    await post(app, `/studio/dokumen/${id}/delete`, cookie, { mode: "soft" });
+    const trash = await (
+      await app.request("/studio/dokumen?status=trashed", { headers: { cookie } })
+    ).text();
+    const barisTrash = trash.split('data-doc-id="').find((r) => r.startsWith(id))!;
+    expect(barisTrash).toContain(`id="hard-${id}"`);
+    expect(barisTrash).toContain(`action="/studio/dokumen/${id}/hard-delete"`);
+    expect(barisTrash).toContain("m-auto rounded-2xl p-0 backdrop:bg-navy-950/60");
+    expect(barisTrash).toContain(">Batal<");
+    expect(barisTrash).not.toContain("hover:underline");
+
+    await post(app, `/studio/dokumen/${id}/hard-delete`, cookie);
+  });
+
+  test("tidak ada lagi confirm() bawaan browser untuk aksi hapus", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+    await post(app, "/studio/label", cookie, { nama: "Label Modal Uji" });
+
+    const dokumen = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    const label = await (await app.request("/studio/label", { headers: { cookie } })).text();
+    const dashboard = await (await app.request("/studio", { headers: { cookie } })).text();
+
+    for (const html of [dokumen, label, dashboard]) {
+      expect(html).not.toContain("return confirm(");
+    }
+    // Gaya modal seragam dengan dialog di halaman dokumen
+    expect(label).toContain('class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60');
+    expect(label).toContain(">Batal<");
+  });
+
+  test("hapus label memakai modal, bukan tombol langsung", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+    await post(app, "/studio/label", cookie, { nama: "Label Uji Modal" });
+
+    const html = await (await app.request("/studio/label", { headers: { cookie } })).text();
+    const idLabel = html.split('data-label-id="')[1].slice(0, 36);
+
+    expect(html).toContain(`id="hapus-label-${idLabel}"`);
+    expect(html).toContain(`action="/studio/label/${idLabel}/delete"`);
+    expect(html).toContain("Hapus label?");
+    expect(html).toContain("Hapus Label");
+    // Tidak ada tombol submit langsung di baris (harus lewat dialog)
+    expect(html).not.toContain(`action="/studio/label/${idLabel}/delete" class="shrink-0"`);
+  });
+
+  test("badge peran menempel di samping nama, bukan di baris tombol", async () => {
+    const app = createTestApp();
+    const adminCookie = await registerUser(app, "adminccit");
+    await registerUser(app, "mahasiswa");
+
+    const html = await (await app.request("/studio/akun", { headers: { cookie: adminCookie } })).text();
+    const baris = html.split('data-user-id="').find((r) => r.includes("@mahasiswa "))!;
+
+    // Badge muncul sebelum baris aksi (di blok nama)
+    const iBadge = baris.indexOf("Kontributor");
+    const iAksi = baris.indexOf("/role");
+    expect(iBadge).toBeGreaterThan(-1);
+    expect(iAksi).toBeGreaterThan(-1);
+    expect(iBadge).toBeLessThan(iAksi);
+
+    // Label aksi tidak lagi memuat span badge peran
+    const aksi = baris.slice(iAksi);
+    expect(aksi).not.toContain("rounded-full bg-slate-100 text-slate-600");
+  });
+
+  test("upload PDF hanya ditawarkan di tab Terbit", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+
+    const pemicu = "document.getElementById('upload-modal').showModal()";
+
+    // Trash: tanpa tombol upload, dengan penjelasan trash kosong
+    for (const url of ["/studio/dokumen?status=trashed", "/studio/postingan?status=trashed"]) {
+      const html = await (await app.request(url, { headers: { cookie } })).text();
+      expect(html).not.toContain(pemicu);
+      expect(html).toContain("Trash kosong");
+    }
+
+    // Arsip: juga tanpa tombol upload (dokumen tidak dipublikasikan)
+    for (const url of ["/studio/dokumen?status=archived", "/studio/postingan?status=archived"]) {
+      const html = await (await app.request(url, { headers: { cookie } })).text();
+      expect(html).not.toContain(pemicu);
+    }
+
+    // Terbit: satu-satunya tempat dengan tombol upload
+    const terbit = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    expect(terbit).toContain(pemicu);
   });
 });

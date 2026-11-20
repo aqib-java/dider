@@ -84,19 +84,25 @@ export function accountController(db: Db) {
     return redirect(c, "/studio/akun");
   });
 
-  // POST /studio/akun/:id/password — reset password oleh admin
+  // POST /studio/akun/:id/password — reset password oleh admin (wajib konfirmasi)
   app.post("/akun/:id/password", requireAdmin(db), async (c) => {
     const id = c.req.param("id");
     const body = await c.req.parseBody();
     const password = String(body.password ?? "");
+    const konfirmasi = String(body.password_confirm ?? "");
 
     const target = users.findPublic(id);
     if (!target) {
       flashError(c, "Akun tidak ditemukan.");
       return redirect(c, "/studio/akun");
     }
+    // Minimal 6 karakter — dicek juga di klien, tapi server tetap penentu.
     if (password.length < 6) {
       flashError(c, "Password baru minimal 6 karakter.");
+      return redirect(c, "/studio/akun");
+    }
+    if (password !== konfirmasi) {
+      flashError(c, "Konfirmasi password tidak sama. Password tidak diubah.");
       return redirect(c, "/studio/akun");
     }
 

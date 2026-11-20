@@ -1,0 +1,18 @@
+<% 
+  // Dialog konfirmasi hapus — gaya seragam dengan dialog di halaman dokumen.
+  // Pakai: include("/partials/confirm-dialog", {
+  //   id, judul, pesan, action, label = "Hapus Permanen"
+  // })
+%>
+<dialog id="<%= it.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-xs shadow-2xl">
+  <form method="post" action="<%= it.action %>" class="w-80 p-6 space-y-4">
+    <h2 class="font-bold text-navy-900"><%= it.judul %></h2>
+    <p class="text-sm text-slate-500"><%= it.pesan %></p>
+    <div class="space-y-2">
+      <button type="submit"
+        class="w-full bg-red-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-red-700 cursor-pointer"><%= it.label ?? "Hapus Permanen" %></button>
+      <button type="button" onclick="this.closest('dialog').close()"
+        class="w-full border border-slate-300 text-sm font-semibold py-2 rounded-lg hover:bg-slate-100 cursor-pointer">Batal</button>
+    </div>
+  </form>
+</dialog>

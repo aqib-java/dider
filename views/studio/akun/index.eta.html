@@ -27,7 +27,7 @@
 
   <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-navy-800">Cari</button>
   <% if (it.q) { %>
-    <a href="/studio/akun<%= it.role === "all" ? "" : "?peran=" + it.role %>" class="text-sm text-slate-500 hover:text-red-600"><i class="bx bx-x-circle"></i> Hapus</a>
+    <a href="/studio/akun<%= it.role === "all" ? "" : "?peran=" + it.role %>" class="text-sm text-slate-500 hover:text-red-600 cursor-pointer"><i class="bx bx-x-circle"></i> Hapus</a>
   <% } %>
 
   <p class="text-sm text-slate-500 ml-auto">
@@ -44,26 +44,25 @@
           <%= u.username.charAt(0).toUpperCase() %>
         </span>
         <div class="min-w-0">
-          <p class="font-semibold truncate">
-            <%= u.full_name || u.username %>
+          <div class="flex items-center gap-2 min-w-0">
+            <p class="font-semibold truncate"><%= u.full_name || u.username %></p>
             <% if (u.id === it.diriSendiri) { %>
-              <span class="ml-1.5 text-[11px] font-normal text-slate-400">(kamu)</span>
+              <span class="text-[11px] font-normal text-slate-400 shrink-0">(kamu)</span>
             <% } %>
-          </p>
-          <p class="text-xs text-slate-400 mt-0.5">
+            <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full <%= u.role === 'admin' ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600' %>">
+              <%= u.role === "admin" ? "Admin CCIT" : "Kontributor" %>
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 truncate">
             @<%= u.username %> · <%= u.jumlah_dokumen %> dokumen · gabung <%= it.formatTanggal(u.created_at) %>
           </p>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-3 shrink-0">
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full <%= u.role === 'admin' ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600' %>">
-          <%= u.role === "admin" ? "Admin CCIT" : "Kontributor" %>
-        </span>
-
         <form method="post" action="/studio/akun/<%= u.id %>/role" class="inline">
           <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'kontributor' : 'admin' %>" />
-          <button type="submit" class="text-sm text-navy-700 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+          <button type="submit" class="text-sm text-navy-700 hover:text-navy-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             <% if (u.id === it.diriSendiri && u.role === "admin") { %>disabled title="Tidak bisa menurunkan diri sendiri"<% } %>>
             <i class="bx bx-transfer"></i>
             <%= u.role === "admin" ? "Jadikan kontributor" : "Jadikan admin" %>
@@ -71,7 +70,7 @@
         </form>
 
         <button type="button" onclick="document.getElementById('pw-<%= u.id %>').showModal()"
-          class="text-sm text-slate-600 hover:underline"><i class="bx bx-key"></i> Reset password</button>
+          class="text-sm text-slate-600 hover:text-navy-900 cursor-pointer"><i class="bx bx-key"></i> Reset password</button>
 
         <dialog id="pw-<%= u.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-xs shadow-2xl">
           <form method="post" action="/studio/akun/<%= u.id %>/password" class="p-6 space-y-4">
@@ -85,12 +84,20 @@
             </div>
             <div>
               <label for="pw-input-<%= u.id %>" class="block text-sm font-medium mb-1.5">Password baru</label>
-              <input id="pw-input-<%= u.id %>" name="password" type="password" required minlength="6"
+              <input id="pw-input-<%= u.id %>" name="password" type="password" required minlength="6" placeholder="Minimal 6 karakter"
+                data-pw-utama
                 class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
-              <p class="text-xs text-slate-400 mt-1.5">Minimal 6 karakter. Sampaikan ke pemilik akun.</p>
             </div>
+            <div>
+              <label for="pw-confirm-<%= u.id %>" class="block text-sm font-medium mb-1.5">Konfirmasi password baru</label>
+              <input id="pw-confirm-<%= u.id %>" name="password_confirm" type="password" required minlength="6" placeholder="Ulangi password baru"
+                data-pw-konfirmasi
+                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+            </div>
+            <p data-pw-error class="hidden text-xs text-red-600"></p>
+            <p class="text-xs text-slate-400">Minimal 6 karakter dan harus sama di kedua kolom. Sampaikan password baru ke pemilik akun.</p>
             <button type="submit"
-              class="w-full bg-navy-900 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-navy-800">Simpan Password</button>
+              class="w-full bg-navy-900 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-navy-800 cursor-pointer">Simpan Password</button>
           </form>
         </dialog>
       </div>
@@ -105,3 +112,40 @@
 </div>
 
 <%~ include("/partials/pagination", { pagination: it.pagination, baseUrl: "/studio/akun", params: { q: it.q, peran: it.role === "all" ? "" : it.role } }) %>
+
+<script>
+  // Validasi reset password: minimal 6 karakter dan konfirmasi harus sama.
+  document.querySelectorAll("form[action*='/password']").forEach(function (form) {
+    const utama = form.querySelector("[data-pw-utama]");
+    const konfirmasi = form.querySelector("[data-pw-konfirmasi]");
+    const error = form.querySelector("[data-pw-error]");
+
+    function cek() {
+      if (utama.value.length > 0 && utama.value.length < 6) {
+        return "Password baru minimal 6 karakter.";
+      }
+      if (konfirmasi.value.length > 0 && utama.value !== konfirmasi.value) {
+        return "Konfirmasi password tidak sama.";
+      }
+      return "";
+    }
+
+    function tampilkanPesan() {
+      const pesan = cek();
+      error.textContent = pesan;
+      error.classList.toggle("hidden", !pesan);
+    }
+
+    form.addEventListener("submit", function (e) {
+      const pesan = cek();
+      if (!pesan) return;
+      e.preventDefault();
+      error.textContent = pesan;
+      error.classList.remove("hidden");
+      (pesan.indexOf("sama") !== -1 ? konfirmasi : utama).focus();
+    });
+
+    utama.addEventListener("input", tampilkanPesan);
+    konfirmasi.addEventListener("input", tampilkanPesan);
+  });
+</script>
