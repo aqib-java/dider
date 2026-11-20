@@ -38,6 +38,18 @@ export type ShelfSort = "latest" | "popular";
 /** Urutan di studio: tambah 'oldest' & 'trashed'. */
 export type SortKey = ShelfSort | "oldest" | "trashed";
 
+/** Opsi filter/pencarian dokumen (dipakai search() & count()). */
+export type SearchOptions = {
+  sort?: SortKey;
+  q?: string;
+  status?: Status;
+  uploaderId?: string | null;
+  /** Slug label; hanya dokumen berlabel ini yang diambil. */
+  labelSlug?: string;
+  limit?: number;
+  offset?: number;
+};
+
 const SHELF_SELECT = `
   SELECT p.id, p.nama, p.slug, p.pdf_path, p.kategori, p.status, p.views, p.uploader_id,
          p.created_at, p.updated_at, p.archived_at, p.deleted_at,
@@ -108,26 +120,11 @@ export class ProjectModel {
    * sort: 'latest' (terbaru) | 'popular' (paling dibaca) | 'oldest' (terlama).
    * q: kata kunci pada nama dokumen / nama uploader.
    */
-  search(
-    opts: {
-      sort?: SortKey;
-      q?: string;
-      status?: Status;
-      uploaderId?: string | null;
-      /** Slug label; hanya dokumen berlabel ini yang diambil. */
-      labelSlug?: string;
-      limit?: number;
-    } = {}
-  ): ProjectSummary[] {
-    const sort = opts.sort ?? "latest";
+  /** WHERE + parameter bersama untuk search() dan count(). */
+  private filter(opts: SearchOptions): { where: string; params: (string | number)[] } {
     // Default 'published' (fail-closed): query publik tidak boleh bocor arsip/trash.
     const status = opts.status ?? "published";
     const q = (opts.q ?? "").trim();
-
-    let orderBy = "p.updated_at DESC";
-    if (sort === "popular") orderBy = "p.views DESC, p.updated_at DESC";
-    else if (sort === "oldest") orderBy = "p.created_at ASC";
-    else if (sort === "trashed") orderBy = "p.deleted_at DESC";
 
     let where = "p.status = ?";
     const params: (string | number)[] = [status];
@@ -145,13 +142,34 @@ export class ProjectModel {
       const like = `%${q}%`;
       params.push(like, like);
     }
+    return { where, params };
+  }
 
+  search(opts: SearchOptions = {}): ProjectSummary[] {
+    const sort = opts.sort ?? "latest";
+    let orderBy = "p.updated_at DESC";
+    if (sort === "popular") orderBy = "p.views DESC, p.updated_at DESC";
+    else if (sort === "oldest") orderBy = "p.created_at ASC";
+    else if (sort === "trashed") orderBy = "p.deleted_at DESC";
+
+    const { where, params } = this.filter(opts);
     let sql = `${SHELF_SELECT} WHERE ${where} ORDER BY ${orderBy}`;
     if (opts.limit && opts.limit > 0) {
-      sql += " LIMIT ?";
-      params.push(opts.limit);
+      sql += " LIMIT ? OFFSET ?";
+      params.push(opts.limit, opts.offset ?? 0);
     }
     return this.db.query(sql).all(...params) as ProjectSummary[];
+  }
+
+  /** Jumlah dokumen yang cocok dengan filter (untuk pagination). */
+  count(opts: SearchOptions = {}): number {
+    const { where, params } = this.filter(opts);
+    const row = this.db
+      .query(
+        `SELECT COUNT(*) AS c FROM projects p LEFT JOIN users u ON u.id = p.uploader_id WHERE ${where}`
+      )
+      .get(...params) as { c: number };
+    return row.c;
   }
 
   /** List dokumen di trash, terbaru di-trash dulu. */

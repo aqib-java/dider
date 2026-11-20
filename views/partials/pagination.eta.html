@@ -1,0 +1,79 @@
+<% 
+  // Partial pagination. Data: it.pagination (lihat src/lib/pagination.ts)
+  //                it.baseUrl  — path halaman (mis. "/studio/akun")
+  //                it.params   — filter aktif yang harus dipertahankan
+  const pg = it.pagination;
+  const params = it.params || {};
+  const baseUrl = it.baseUrl;
+  const qsPer = (per) => {
+    const u = new URLSearchParams();
+    Object.keys(params).forEach(function (k) {
+      if (params[k] !== undefined && params[k] !== null && params[k] !== "") u.set(k, String(params[k]));
+    });
+    if (per && per !== 10) u.set("per", String(per));
+    const s = u.toString();
+    return s ? baseUrl + "?" + s : baseUrl;
+  };
+%>
+<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-slate-500">
+    <% if (pg.total === 0) { %>
+      Tidak ada data
+    <% } else { %>
+      Menampilkan <span class="font-semibold text-navy-900"><%= pg.from %>–<%= pg.to %></span>
+      dari <span class="font-semibold text-navy-900"><%= pg.total %></span>
+    <% } %>
+  </p>
+
+  <div class="flex items-center gap-3">
+    <form method="get" action="<%= baseUrl %>" class="flex items-center gap-1.5 text-sm text-slate-500">
+      <% Object.keys(params).forEach(function (k) { %>
+        <% if (params[k] !== undefined && params[k] !== null && params[k] !== "" && k !== "per" && k !== "page") { %>
+          <input type="hidden" name="<%= k %>" value="<%= params[k] %>" />
+        <% } %>
+      <% }) %>
+      <label for="per" class="whitespace-nowrap">Per halaman</label>
+      <select id="per" name="per" onchange="this.form.submit()"
+        class="border border-slate-300 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-500">
+        <% (pg.offsets || [10, 15]).forEach(function (n) { %>
+          <option value="<%= n %>" <%= pg.per === n ? "selected" : "" %>><%= n %></option>
+        <% }) %>
+      </select>
+      <noscript>
+        <button type="submit" class="text-navy-700 hover:underline">Terapkan</button>
+      </noscript>
+    </form>
+
+    <% if (pg.pages > 1) { %>
+      <nav class="flex items-center gap-1" aria-label="Navigasi halaman">
+        <% if (pg.hasPrev) { %>
+          <a href="<%= pg.prevUrl %>" class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-100" aria-label="Halaman sebelumnya">
+            <i class="bx bx-chevron-left"></i>
+          </a>
+        <% } else { %>
+          <span class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-300" aria-disabled="true">
+            <i class="bx bx-chevron-left"></i>
+          </span>
+        <% } %>
+
+        <% pg.items.forEach(function (it2) { %>
+          <% if (it2.active) { %>
+            <span aria-current="page" class="px-3 py-1.5 rounded-lg bg-navy-900 text-white text-sm font-semibold"><%= it2.n %></span>
+          <% } else { %>
+            <a href="<%= it2.url %>" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-100"><%= it2.n %></a>
+          <% } %>
+        <% }) %>
+
+        <% if (pg.hasNext) { %>
+          <a href="<%= pg.nextUrl %>" class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-100" aria-label="Halaman berikutnya">
+            <i class="bx bx-chevron-right"></i>
+          </a>
+        <% } else { %>
+          <span class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-300" aria-disabled="true">
+            <i class="bx bx-chevron-right"></i>
+          </span>
+        <% } %>
+      </nav>
+    <% } %>
+  </div>
+</div>

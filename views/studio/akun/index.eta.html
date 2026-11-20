@@ -2,16 +2,39 @@
 <% it.title = "Akun — Dider Studio" %>
 <% it.pageTitle = "Akun" %>
 
-<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
-  <div>
-    <p class="text-sm text-slate-500">
-      <%= it.daftar.length %> akun · <%= it.daftar.filter(function (u) { return u.role === "admin"; }).length %> admin CCIT
-    </p>
+<form method="get" action="/studio/akun" class="flex flex-wrap items-center gap-2 mb-5">
+  <div class="relative">
+    <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+    <input type="search" name="q" value="<%= it.q %>" placeholder="Cari nama atau username…"
+      class="w-64 max-w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
   </div>
-  <p class="text-sm text-slate-400">
-    <i class="bx bx-info-circle"></i> Kontributor hanya bisa mengelola dokumennya sendiri.
+
+  <div class="inline-flex bg-slate-100 p-1 rounded-xl text-sm font-semibold">
+    <%
+      const peranOpsi = [
+        { key: "all", label: "Semua" },
+        { key: "admin", label: "Admin" },
+        { key: "kontributor", label: "Kontributor" },
+      ];
+    %>
+    <% peranOpsi.forEach(function (o) { %>
+      <a href="/studio/akun?<%= o.key === "all" ? "" : "peran=" + o.key %><%= it.q ? (o.key === "all" ? "q=" : "&q=") + encodeURIComponent(it.q) : "" %>"
+        class="px-3 py-1.5 rounded-lg <%= it.role === o.key ? "bg-navy-900 text-white shadow-sm" : "text-slate-600 hover:text-navy-900" %>">
+        <%= o.label %>
+      </a>
+    <% }) %>
+  </div>
+
+  <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-navy-800">Cari</button>
+  <% if (it.q) { %>
+    <a href="/studio/akun<%= it.role === "all" ? "" : "?peran=" + it.role %>" class="text-sm text-slate-500 hover:text-red-600"><i class="bx bx-x-circle"></i> Hapus</a>
+  <% } %>
+
+  <p class="text-sm text-slate-500 ml-auto">
+    <i class="bx bx-group"></i> <%= it.pagination.total %> akun ·
+    <%= it.ringkasan.admin %> admin · <%= it.ringkasan.kontributor %> kontributor
   </p>
-</div>
+</form>
 
 <div class="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
   <% it.daftar.forEach(function (u) { %>
@@ -74,3 +97,11 @@
     </div>
   <% }) %>
 </div>
+
+<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-slate-400">
+    <i class="bx bx-info-circle"></i> Kontributor hanya bisa mengelola dokumennya sendiri.
+  </p>
+</div>
+
+<%~ include("/partials/pagination", { pagination: it.pagination, baseUrl: "/studio/akun", params: { q: it.q, peran: it.role === "all" ? "" : it.role } }) %>

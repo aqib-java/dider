@@ -18,18 +18,42 @@ export type LabelWithCount = Label & {
 export class LabelModel {
   constructor(private db: Database) {}
 
-  /** Semua label beserta jumlah dokumen terbit yang memakainya. */
-  listWithCount(): LabelWithCount[] {
-    return this.db
-      .query(
-        `SELECT l.id, l.nama, l.slug, l.created_at,
-                (SELECT COUNT(*) FROM project_labels pl
-                   JOIN projects p ON p.id = pl.project_id
-                  WHERE pl.label_id = l.id AND p.status = 'published') AS jumlah
-           FROM labels l
-          ORDER BY l.nama COLLATE NOCASE ASC`
-      )
-      .all() as LabelWithCount[];
+  /** Label beserta jumlah dokumen terbit yang memakainya (search + pagination). */
+  listWithCount(opts: { q?: string; limit?: number; offset?: number } = {}): LabelWithCount[] {
+    const q = (opts.q ?? "").trim();
+    const params: (string | number)[] = [];
+    let where = "1=1";
+    if (q) {
+      where = "l.nama LIKE ?";
+      params.push(`%${q}%`);
+    }
+    let sql = `SELECT l.id, l.nama, l.slug, l.created_at,
+                      (SELECT COUNT(*) FROM project_labels pl
+                         JOIN projects p ON p.id = pl.project_id
+                        WHERE pl.label_id = l.id AND p.status = 'published') AS jumlah
+                 FROM labels l
+                WHERE ${where}
+                ORDER BY l.nama COLLATE NOCASE ASC`;
+    if (opts.limit && opts.limit > 0) {
+      sql += " LIMIT ? OFFSET ?";
+      params.push(opts.limit, opts.offset ?? 0);
+    }
+    return this.db.query(sql).all(...params) as LabelWithCount[];
+  }
+
+  /** Jumlah label yang cocok pencarian (untuk pagination). */
+  count(opts: { q?: string } = {}): number {
+    const q = (opts.q ?? "").trim();
+    const params: string[] = [];
+    let where = "1=1";
+    if (q) {
+      where = "nama LIKE ?";
+      params.push(`%${q}%`);
+    }
+    const row = this.db
+      .query(`SELECT COUNT(*) AS c FROM labels WHERE ${where}`)
+      .get(...params) as { c: number };
+    return row.c;
   }
 
   findBySlug(slug: string): Label | null {

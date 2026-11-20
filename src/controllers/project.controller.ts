@@ -8,6 +8,7 @@ import { LabelModel } from "../models/label.model";
 import type { PublicUser } from "../models/user.model";
 import { requireAuth, requireAdmin } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
+import { buildPagination, pageOffset } from "../lib/pagination";
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_DIR = "uploads"; // harus sinkron dengan serveStatic /uploads/* di app.ts
@@ -56,12 +57,25 @@ export function projectController(db: Db) {
     const status: Status =
       raw === "archived" ? "archived" : raw === "trashed" ? "trashed" : "published";
     const labelSlug = c.req.query("label") || undefined;
+    const q = (c.req.query("q") ?? "").trim();
+
+    const filter = { status, uploaderId: scope, labelSlug, q };
+    const pagination = buildPagination({
+      pageRaw: c.req.query("page"),
+      perRaw: c.req.query("per"),
+      total: projects.count(filter),
+      baseUrl: semua ? "/studio/postingan" : "/studio/dokumen",
+      params: { status: status === "published" ? undefined : status, label: labelSlug, q },
+    });
 
     const dokumen = projects
-      .search({ status, uploaderId: scope, labelSlug })
+      .search({ ...filter, limit: pagination.per, offset: pageOffset(pagination) })
       .map((d) => ({ ...d, missing: !existsSync(d.pdf_path) }));
 
     return view(c, "studio/dokumen/index", {
+      pagination,
+      q,
+      params: { status: status === "published" ? "" : status, label: labelSlug ?? "", q },
       mode,
       basePath: semua ? "/studio/postingan" : "/studio/dokumen",
       dokumen,
