@@ -29,7 +29,8 @@
       </a>
     <% }) %>
   </div>
-  <% if (it.status !== "trashed") { %>
+  <% /* Upload hanya relevan di tab Terbit — di Arsip & Trash dokumen tidak dipublikasikan. */ %>
+  <% if (it.status === "published") { %>
     <button type="button" onclick="document.getElementById('upload-modal').showModal()"
       class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600 cursor-pointer"><i class="bx bx-plus"></i> Upload</button>
   <% } %>

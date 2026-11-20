@@ -386,22 +386,27 @@ describe("Akun — manajemen user (admin)", () => {
     expect(aksi).not.toContain("rounded-full bg-slate-100 text-slate-600");
   });
 
-  test("tab Trash tidak menawarkan upload PDF", async () => {
+  test("upload PDF hanya ditawarkan di tab Terbit", async () => {
     const app = createTestApp();
     const cookie = await registerUser(app, "adminccit");
 
+    const pemicu = "document.getElementById('upload-modal').showModal()";
+
+    // Trash: tanpa tombol upload, dengan penjelasan trash kosong
     for (const url of ["/studio/dokumen?status=trashed", "/studio/postingan?status=trashed"]) {
       const html = await (await app.request(url, { headers: { cookie } })).text();
-      // Tidak ada pemicu modal upload di halaman trash (modal global tetap dimuat)
-      expect(html).not.toContain("document.getElementById('upload-modal').showModal()");
+      expect(html).not.toContain(pemicu);
       expect(html).toContain("Trash kosong");
     }
 
-    // Tab Terbit & Arsip tetap punya tombol upload
-    const terbit = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
-    expect(terbit).toContain("document.getElementById('upload-modal').showModal()");
+    // Arsip: juga tanpa tombol upload (dokumen tidak dipublikasikan)
+    for (const url of ["/studio/dokumen?status=archived", "/studio/postingan?status=archived"]) {
+      const html = await (await app.request(url, { headers: { cookie } })).text();
+      expect(html).not.toContain(pemicu);
+    }
 
-    const arsip = await (await app.request("/studio/dokumen?status=archived", { headers: { cookie } })).text();
-    expect(arsip).toContain("document.getElementById('upload-modal').showModal()");
+    // Terbit: satu-satunya tempat dengan tombol upload
+    const terbit = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    expect(terbit).toContain(pemicu);
   });
 });
