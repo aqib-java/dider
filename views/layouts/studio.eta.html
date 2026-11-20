@@ -55,19 +55,19 @@
   </body>
   <% } else { %>
   <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col text-sm">
-    <div class="mx-auto pt-8 flex items-center gap-2">
-      <span class="bg-navy-900 text-gold-500 font-black rounded-lg w-8 h-8 grid place-items-center">D</span>
-      <span class="font-bold text-lg text-navy-900">Dider<span class="text-gold-500">.</span></span>
-    </div>
-    <main class="w-full flex-1">
-      <% if (it.flash) { %>
-        <div class="max-w-md mx-auto mt-5 px-4">
-          <div class="<%= it.flash.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-red-50 border-red-300 text-red-800' %> border px-3 py-2 rounded-xl text-[13px]">
+    <main class="flex-1 w-full flex items-center justify-center px-4 py-10">
+      <div class="w-full max-w-md">
+        <div class="flex items-center justify-center gap-2 mb-6">
+          <span class="bg-navy-900 text-gold-500 font-black rounded-lg w-9 h-9 grid place-items-center">D</span>
+          <span class="font-bold text-lg text-navy-900">Dider<span class="text-gold-500">.</span></span>
+        </div>
+        <% if (it.flash) { %>
+          <div class="<%= it.flash.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-red-50 border-red-300 text-red-800' %> border px-3 py-2 rounded-xl text-[13px] mb-4">
             <%= it.flash.message %>
           </div>
-        </div>
-      <% } %>
-      <%~ it.body %>
+        <% } %>
+        <%~ it.body %>
+      </div>
     </main>
     <footer class="text-center text-[11px] text-slate-400 py-4">Dider · Venture Studio CCIT-FTUI</footer>
   </body>

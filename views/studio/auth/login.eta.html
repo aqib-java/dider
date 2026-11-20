@@ -1,8 +1,9 @@
 <% layout("/layouts/studio") %>
 <% it.title = "Login — Dider Studio" %>
 
-<div class="max-w-md mx-auto mt-10 px-4">
-  <h1 class="text-2xl font-bold mb-6 text-center text-navy-900">Masuk ke Dider</h1>
+<div>
+  <h1 class="text-2xl font-bold mb-1 text-center text-navy-900">Masuk ke Dider</h1>
+  <p class="text-center text-sm text-slate-500 mb-6">Kelola publikasi CCIT FTUI</p>
   <%~ include("/partials/errors", { errors: it.errors }) %>
   <form method="post" action="/studio/login" class="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
     <div>
