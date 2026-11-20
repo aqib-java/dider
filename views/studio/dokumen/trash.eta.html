@@ -1,0 +1,39 @@
+<% layout("/layouts/studio") %>
+<% it.title = "Trash — Dider Studio" %>
+<% it.pageTitle = "Trash" %>
+
+<div class="flex items-center justify-between gap-4 mb-5">
+  <p class="text-sm text-slate-500"><%= it.dokumen.length %> dokumen di trash</p>
+  <a href="/studio/dokumen" class="text-sm text-navy-700 hover:underline">← Kembali ke dokumen</a>
+</div>
+
+<% if (it.dokumen.length === 0) { %>
+  <div class="bg-white border border-dashed border-slate-300 rounded-xl px-6 py-16 text-center">
+    <i class="bx bx-trash text-4xl text-slate-300"></i>
+    <p class="font-semibold text-navy-900 mt-3">Trash kosong.</p>
+  </div>
+<% } else { %>
+  <div class="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
+    <% it.dokumen.forEach(function (d) { %>
+      <div class="px-5 sm:px-6 py-4 flex items-center justify-between gap-6 hover:bg-slate-50/70">
+        <div class="min-w-0">
+          <p class="font-semibold truncate"><%= d.nama %>
+            <% if (d.missing) { %>
+              <span class="ml-2 text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">File hilang — upload ulang</span>
+            <% } %>
+          </p>
+          <p class="text-xs text-slate-400 mt-0.5">Dihapus <%= it.formatTanggal(d.deleted_at) %></p>
+        </div>
+        <div class="flex items-center gap-5 shrink-0">
+          <form method="post" action="/studio/dokumen/<%= d.id %>/restore" class="inline">
+            <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-undo"></i> Pulihkan</button>
+          </form>
+          <form method="post" action="/studio/dokumen/<%= d.id %>/hard-delete" class="inline"
+            onsubmit="return confirm('Hapus permanen dokumen ini?')">
+            <button type="submit" class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>

@@ -1,0 +1,23 @@
+<% layout("/layouts/studio") %>
+<% it.title = "Login — Dider Studio" %>
+
+<div class="max-w-md mx-auto mt-10 px-4">
+  <h1 class="text-2xl font-bold mb-6 text-center text-navy-900">Masuk ke Dider</h1>
+  <%~ include("/partials/errors", { errors: it.errors }) %>
+  <form method="post" action="/studio/login" class="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+    <div>
+      <label for="username" class="block text-sm font-medium mb-1">Username</label>
+      <input id="username" name="username" required value="<%= it.old.username ?? '' %>"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+    </div>
+    <div>
+      <label for="password" class="block text-sm font-medium mb-1">Password</label>
+      <input id="password" name="password" type="password" required
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+    </div>
+    <button type="submit" class="w-full bg-navy-900 text-white font-semibold py-2.5 rounded-lg hover:bg-navy-800">Login</button>
+  </form>
+  <p class="text-center text-sm text-slate-500 mt-4">
+    Belum punya akun? <a href="/studio/register" class="text-navy-700 hover:underline">Daftar</a>
+  </p>
+</div>

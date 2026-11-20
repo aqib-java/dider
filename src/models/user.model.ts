@@ -8,7 +8,7 @@ export type PublicUser = {
   created_at: string;
 };
 
-/** Model: tabel users — auth aplikasi (admin). */
+/** Model: tabel users — auth aplikasi. */
 export class UserModel {
   constructor(private db: Database) {}
 

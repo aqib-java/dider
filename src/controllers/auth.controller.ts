@@ -9,7 +9,7 @@ import {
 } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
 
-/** Controller web: /admin/auth — register, login, logout (form POST). */
+/** Controller web: /studio/auth — register, login, logout (form POST). */
 export function authController(db: Db) {
   const app = new Hono();
 
@@ -21,7 +21,7 @@ export function authController(db: Db) {
   const users = new UserModel(db.sqlite);
 
   app.get("/login", redirectIfAuthenticated(db), (c) =>
-    view(c, "admin/auth/login", { errors: null, old: {} })
+    view(c, "studio/auth/login", { errors: null, old: {} })
   );
 
   app.post("/login", redirectIfAuthenticated(db), async (c) => {
@@ -31,7 +31,7 @@ export function authController(db: Db) {
 
     const id = await users.verifyPassword(username, password);
     if (!id) {
-      return view(c, "admin/auth/login", {
+      return view(c, "studio/auth/login", {
         errors: ["Username atau password salah."],
         old: { username },
       });
@@ -39,11 +39,11 @@ export function authController(db: Db) {
 
     await createSession(c, db, id);
     flashSuccess(c, "Selamat datang!");
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio");
   });
 
   app.get("/register", redirectIfAuthenticated(db), (c) =>
-    view(c, "admin/auth/register", { errors: null, old: {} })
+    view(c, "studio/auth/register", { errors: null, old: {} })
   );
 
   app.post("/register", redirectIfAuthenticated(db), async (c) => {
@@ -58,7 +58,7 @@ export function authController(db: Db) {
     if (users.findByUsername(username)) errors.push("Username sudah dipakai.");
 
     if (errors.length) {
-      return view(c, "admin/auth/register", {
+      return view(c, "studio/auth/register", {
         errors,
         old: { username, full_name: fullName },
       });
@@ -67,7 +67,7 @@ export function authController(db: Db) {
     const id = await users.create(username, password, fullName || undefined);
     await createSession(c, db, id);
     flashSuccess(c, "Akun berhasil dibuat. Selamat datang!");
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio");
   });
 
   app.post("/logout", requireAuth(db), (c) => {

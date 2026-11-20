@@ -1,0 +1,54 @@
+<%
+  const p = it.path || "";
+  const isDashboard = p === "/studio" || p === "/studio/";
+  const isTrash = p === "/studio/dokumen/trash";
+  const isDokumen = p.indexOf("/studio/dokumen") === 0 && !isTrash;
+  const base = "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium";
+  const idle = "text-slate-300 hover:bg-white/5 hover:text-white";
+  const on = "bg-navy-800 text-white shadow-[inset_3px_0_0_0_var(--color-gold-500)]";
+%>
+<aside id="studio-sidebar"
+  class="fixed inset-y-0 left-0 z-40 w-64 shrink-0 -translate-x-full transition-transform lg:static lg:translate-x-0 bg-navy-900 text-slate-300 flex flex-col">
+  <div class="px-5 pt-5 pb-4 flex items-center gap-2.5">
+    <span class="bg-gold-500 text-navy-950 font-black rounded-lg w-9 h-9 grid place-items-center shrink-0">D</span>
+    <div class="min-w-0">
+      <p class="font-bold text-lg leading-tight text-white">Dider<span class="text-gold-500">.</span></p>
+      <p class="text-[11px] tracking-wide text-slate-400 leading-tight">CCIT FTUI</p>
+    </div>
+    <button id="sidebar-close" type="button" aria-label="Tutup menu"
+      class="lg:hidden ml-auto text-2xl text-slate-400 hover:text-white leading-none"><i class="bx bx-x"></i></button>
+  </div>
+  <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
+    <p class="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-slate-500">MENU</p>
+    <a href="/studio" class="<%= base %> <%= isDashboard ? on : idle %>" <%= isDashboard ? 'aria-current="page"' : '' %>>
+      <i class="bx bx-grid-alt text-lg leading-none"></i> Dashboard
+    </a>
+    <a href="/studio/dokumen" class="<%= base %> <%= isDokumen ? on : idle %>" <%= isDokumen ? 'aria-current="page"' : '' %>>
+      <i class="bx bx-file text-lg leading-none"></i> Dokumen Saya
+    </a>
+    <a href="/studio/dokumen/trash" class="<%= base %> <%= isTrash ? on : idle %>" <%= isTrash ? 'aria-current="page"' : '' %>>
+      <i class="bx bx-trash text-lg leading-none"></i> Trash
+    </a>
+    <p class="px-3 pt-4 pb-1 text-[11px] font-semibold tracking-wider text-slate-500">LAINNYA</p>
+    <a href="/" class="<%= base %> <%= idle %>">
+      <i class="bx bx-link-external text-lg leading-none"></i> Lihat Situs
+    </a>
+  </nav>
+  <div class="p-3 border-t border-white/10">
+    <div class="flex items-center gap-3 px-1">
+      <span class="bg-gold-500/15 text-gold-400 font-bold rounded-full w-9 h-9 grid place-items-center shrink-0 text-sm">
+        <%= it.user ? it.user.username.charAt(0).toUpperCase() : "?" %>
+      </span>
+      <div class="min-w-0 flex-1 pr-2">
+        <p class="text-sm font-medium text-white truncate"><%= it.user ? it.user.username : "-" %></p>
+        <p class="text-[11px] text-slate-400 leading-tight">Pengelola</p>
+      </div>
+    </div>
+    <form method="post" action="/studio/logout" class="mt-3 flex justify-end">
+      <button type="submit"
+        class="inline-flex items-center gap-1.5 border border-white/20 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-500/15 hover:border-red-400/50 hover:text-red-300 transition-colors">
+        <i class="bx bx-log-out text-base"></i> Keluar
+      </button>
+    </form>
+  </div>
+</aside>

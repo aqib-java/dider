@@ -10,7 +10,7 @@ import { view, redirect, flashSuccess, flashError } from "../view";
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_DIR = "uploads"; // harus sinkron dengan serveStatic /uploads/* di app.ts
 
-/** Controller web: /admin/dokumen — upload PDF, daftar, trash, hapus, restore. */
+/** Controller web: /studio/dokumen — upload PDF, daftar, trash, hapus, restore. */
 export function projectController(db: Db) {
   const app = new Hono();
 
@@ -21,16 +21,16 @@ export function projectController(db: Db) {
 
   const projects = new ProjectModel(db.sqlite);
 
-  // GET /admin/dokumen — daftar dokumen aktif + form upload
+  // GET /studio/dokumen — daftar dokumen aktif + form upload
   app.get("/dokumen", requireAuth(db), (c) => {
     const dokumen = projects.list().map((d) => ({
       ...d,
       missing: !existsSync(d.pdf_path),
     }));
-    return view(c, "admin/dokumen/index", { dokumen });
+    return view(c, "studio/dokumen/index", { dokumen });
   });
 
-  // POST /admin/dokumen — upload PDF
+  // POST /studio/dokumen — upload PDF
   app.post("/dokumen", requireAuth(db), async (c) => {
     const body = await c.req.parseBody();
     const nama = String(body.nama ?? "").trim() || "Tanpa judul";
@@ -39,17 +39,17 @@ export function projectController(db: Db) {
 
     if (!(file instanceof File)) {
       flashError(c, "Pilih file PDF untuk di-upload.");
-      return redirect(c, "/admin/dokumen");
+      return redirect(c, "/studio/dokumen");
     }
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     if (!isPdf) {
       flashError(c, "Hanya file PDF yang diizinkan.");
-      return redirect(c, "/admin/dokumen");
+      return redirect(c, "/studio/dokumen");
     }
     if (file.size > MAX_PDF_SIZE) {
       flashError(c, "Ukuran PDF maksimal 50MB.");
-      return redirect(c, "/admin/dokumen");
+      return redirect(c, "/studio/dokumen");
     }
 
     const id = randomUUID();
@@ -57,7 +57,7 @@ export function projectController(db: Db) {
     await Bun.write(pdfPath, file);
     if (!existsSync(pdfPath)) {
       flashError(c, "Gagal menyimpan file PDF di server. Coba lagi.");
-      return redirect(c, "/admin/dokumen");
+      return redirect(c, "/studio/dokumen");
     }
     try {
       projects.create(nama, pdfPath, id, uploaderId);
@@ -67,41 +67,41 @@ export function projectController(db: Db) {
         unlinkSync(pdfPath);
       } catch {}
       flashError(c, "Gagal menyimpan data dokumen. Coba lagi.");
-      return redirect(c, "/admin/dokumen");
+      return redirect(c, "/studio/dokumen");
     }
     flashSuccess(c, `Dokumen "${nama}" berhasil di-upload.`);
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio/dokumen");
   });
 
-  // GET /admin/dokumen/trash — daftar dokumen di trash
+  // GET /studio/dokumen/trash — daftar dokumen di trash
   app.get("/dokumen/trash", requireAuth(db), (c) => {
     const dokumen = projects.listTrashed().map((d) => ({
       ...d,
       missing: !existsSync(d.pdf_path),
     }));
-    return view(c, "admin/dokumen/trash", { dokumen });
+    return view(c, "studio/dokumen/trash", { dokumen });
   });
 
-  // POST /admin/dokumen/:id/delete — soft delete (masuk trash). Hard delete
+  // POST /studio/dokumen/:id/delete — soft delete (masuk trash). Hard delete
   // TIDAK lewat sini — wajib lewat /hard-delete eksplisit.
   app.post("/dokumen/:id/delete", requireAuth(db), (c) => softDelete(c, projects));
 
-  // POST /admin/dokumen/:id/hard-delete — hard delete permanen (dari trash)
+  // POST /studio/dokumen/:id/hard-delete — hard delete permanen (dari trash)
   app.post("/dokumen/:id/hard-delete", requireAuth(db), (c) => hardDelete(c, projects));
 
-  // POST /admin/dokumen/:id/trash-and-delete — dari popup halaman utama:
+  // POST /studio/dokumen/:id/trash-and-delete — dari popup halaman utama:
   // pindahkan ke trash lalu hapus permanen dalam satu aksi eksplisit.
   app.post("/dokumen/:id/trash-and-delete", requireAuth(db), (c) =>
     hardDelete(c, projects, { allowActive: true })
   );
 
-  // POST /admin/dokumen/:id/restore — restore dari trash
+  // POST /studio/dokumen/:id/restore — restore dari trash
   app.post("/dokumen/:id/restore", requireAuth(db), (c) => {
     const id = c.req.param("id");
     const doc = projects.findById(id);
     if (!doc || !doc.deleted_at) {
       flashError(c, "Dokumen tidak ditemukan di trash.");
-      return redirect(c, "/admin/dokumen/trash");
+      return redirect(c, "/studio/dokumen/trash");
     }
     projects.restore(id);
     if (existsSync(doc.pdf_path)) {
@@ -112,7 +112,7 @@ export function projectController(db: Db) {
         `Dokumen "${doc.nama}" dipulihkan, tetapi file PDF-nya tidak ditemukan di server.`
       );
     }
-    return redirect(c, "/admin/dokumen/trash");
+    return redirect(c, "/studio/dokumen/trash");
   });
 
   return app;
@@ -124,15 +124,15 @@ function softDelete(c: Context, projects: ProjectModel) {
   const doc = projects.findById(id);
   if (!doc) {
     flashError(c, "Dokumen tidak ditemukan.");
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio/dokumen");
   }
   if (doc.deleted_at) {
     flashError(c, "Dokumen sudah ada di trash.");
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio/dokumen");
   }
   projects.softDelete(id);
   flashSuccess(c, `Dokumen "${doc.nama}" dipindahkan ke trash.`);
-  return redirect(c, "/admin/dokumen");
+  return redirect(c, "/studio/dokumen");
 }
 
 /** Hard delete: hapus baris DB + file permanen. Default hanya dari trash. */
@@ -145,11 +145,11 @@ function hardDelete(
   const doc = projects.findById(id);
   if (!doc) {
     flashError(c, "Dokumen tidak ditemukan.");
-    return redirect(c, "/admin/dokumen/trash");
+    return redirect(c, "/studio/dokumen/trash");
   }
   if (!doc.deleted_at && !opts.allowActive) {
     flashError(c, "Dokumen belum di trash. Pindahkan ke trash dulu.");
-    return redirect(c, "/admin/dokumen");
+    return redirect(c, "/studio/dokumen");
   }
   const fromTrash = Boolean(doc.deleted_at);
   // Hapus baris dulu, lalu file. File orphan di-swallow (bukan kegagalan data).
@@ -160,5 +160,5 @@ function hardDelete(
     // file sudah tidak ada — abaikan
   }
   flashSuccess(c, `Dokumen "${doc.nama}" dihapus permanen.`);
-  return redirect(c, fromTrash ? "/admin/dokumen/trash" : "/admin/dokumen");
+  return redirect(c, fromTrash ? "/studio/dokumen/trash" : "/studio/dokumen");
 }
