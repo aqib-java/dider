@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { env } from "bun";
 import { mkdirSync } from "fs";
+import { slugify } from "./lib/slug";
 
 export type Driver = "sqlite" | "supabase";
 
@@ -82,5 +83,35 @@ export function migrate(db: Database) {
   // Sumber buku: user yang meng-upload (NULL untuk data lama).
   if (!projectCols.some((c) => c.name === "uploader_id")) {
     db.exec("ALTER TABLE projects ADD COLUMN uploader_id TEXT;");
+  }
+
+  // Slug URL publik (/majalah/:slug) — dibangkitkan dari nama dokumen.
+  if (!projectCols.some((c) => c.name === "slug")) {
+    db.exec("ALTER TABLE projects ADD COLUMN slug TEXT;");
+  }
+  backfillSlugs(db);
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug);");
+}
+
+/** Isi slug untuk baris lama (dan yang masih NULL) supaya unik & stabil. */
+function backfillSlugs(db: Database) {
+  const rows = db.query("SELECT id, nama FROM projects WHERE slug IS NULL OR slug = ''").all() as {
+    id: string;
+    nama: string;
+  }[];
+  if (rows.length === 0) return;
+
+  const used = new Set(
+    (db.query("SELECT slug FROM projects WHERE slug IS NOT NULL").all() as { slug: string }[])
+      .map((r) => r.slug)
+  );
+  const update = db.query("UPDATE projects SET slug = ? WHERE id = ?");
+  for (const row of rows) {
+    const base = slugify(row.nama);
+    let slug = base;
+    let n = 2;
+    while (used.has(slug)) slug = `${base}-${n++}`;
+    used.add(slug);
+    update.run(slug, row.id);
   }
 }

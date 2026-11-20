@@ -1,0 +1,92 @@
+<% layout("/layouts/studio") %>
+<% it.title = "Dashboard — Dider" %>
+<% it.pageTitle = "Dashboard" %>
+
+<div class="grid sm:grid-cols-3 gap-5 mb-7">
+  <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-navy-900">
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-file-blank text-lg text-navy-700"></i>Total Dokumen</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.total %></p>
+    <a href="/studio/dokumen" class="text-sm text-navy-700 hover:underline">Kelola dokumen →</a>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-gold-500">
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-show text-lg text-navy-700"></i>Total Dibaca</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.views %></p>
+    <p class="text-sm text-slate-400">kali dibuka di reader</p>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-slate-300">
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-trash text-lg text-navy-700"></i>Isi Trash</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.trash %></p>
+    <a href="/studio/dokumen/trash" class="text-sm text-navy-700 hover:underline">Lihat trash →</a>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
+  <!-- Terakhir di-upload -->
+  <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+      <h2 class="font-bold text-lg text-navy-900">Terakhir Di-upload</h2>
+      <button type="button" onclick="document.getElementById('upload-modal').showModal()"
+        class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600"><i class="bx bx-plus"></i> Upload</button>
+    </div>
+    <% if (it.terbaru.length === 0) { %>
+      <p class="px-6 py-14 text-center text-slate-500 text-sm">Belum ada dokumen. Upload PDF pertama kamu lewat tombol di atas!</p>
+    <% } else { %>
+      <ul class="divide-y divide-slate-100">
+        <% it.terbaru.forEach(function (d) { %>
+          <li class="px-6 py-4 flex items-center gap-4 hover:bg-slate-50/70">
+            <span class="bg-navy-50 text-navy-700 rounded-lg w-10 h-10 grid place-items-center shrink-0">
+              <i class="bx bx-file text-xl"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold truncate"><%= d.nama %>
+                <% if (d.missing) { %>
+                  <span class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">File hilang — upload ulang</span>
+                <% } %>
+              </p>
+              <p class="text-xs text-slate-400 mt-0.5"><%= d.views %>× dibaca · Diperbarui <%= it.formatTanggal(d.updated_at) %></p>
+            </div>
+            <a href="/majalah/<%= d.slug %>" target="_blank" rel="noopener"
+              class="shrink-0 text-sm text-navy-700 hover:underline"><i class="bx bx-book-open"></i> Baca</a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <!-- Panel samping -->
+  <div class="space-y-5">
+    <div class="bg-navy-900 text-slate-300 rounded-xl p-5">
+      <p class="font-semibold text-white">Bagikan rak buku</p>
+      <p class="text-sm text-slate-400 mt-1 leading-relaxed">Publik bisa menjelajah semua terbitan di halaman jelajah.</p>
+      <div class="mt-4 flex flex-col gap-2">
+        <a href="/jelajah" target="_blank" rel="noopener"
+          class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600 text-center">
+          <i class="bx bx-link-external"></i> Buka Halaman Publik
+        </a>
+        <a href="/studio/dokumen" class="border border-white/20 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-white/5 text-center">
+          <i class="bx bx-list-ul"></i> Semua Dokumen
+        </a>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <p class="font-semibold text-navy-900 mb-3">Ringkasan</p>
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-slate-500">Dokumen aktif</dt>
+          <dd class="font-semibold text-navy-900"><%= it.stats.total %></dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-slate-500">Di trash</dt>
+          <dd class="font-semibold text-navy-900"><%= it.stats.trash %></dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-slate-500">Rata-rata dibaca</dt>
+          <dd class="font-semibold text-navy-900">
+            <%= it.stats.total > 0 ? Math.round(it.stats.views / it.stats.total) : 0 %>×
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</div>

@@ -1,17 +1,23 @@
-<nav class="bg-white border-b border-slate-200">
-  <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="/" class="font-bold text-lg text-indigo-600">Dider</a>
-    <div class="flex items-center gap-4 text-sm">
-      <a href="/" class="hover:text-indigo-600">Home</a>
+<nav class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-6">
+    <a href="/" class="flex items-center gap-2.5 shrink-0">
+      <span class="bg-navy-900 text-gold-500 font-black rounded-lg w-9 h-9 grid place-items-center">D</span>
+      <span class="leading-tight">
+        <span class="font-bold text-lg text-navy-900 block">Dider<span class="text-gold-500">.</span></span>
+        <span class="text-[10px] tracking-widest text-slate-400 uppercase block -mt-0.5">CCIT FTUI</span>
+      </span>
+    </a>
+
+    <div class="ml-auto flex items-center gap-3 text-sm">
       <% if (it.user) { %>
-        <a href="/admin/dokumen" class="hover:text-indigo-600">Dokumen</a>
-        <span class="text-slate-500">Halo, <%= it.user.username %></span>
-        <form method="post" action="/admin/logout" class="inline">
-          <button type="submit" class="text-red-600 hover:text-red-700">Logout</button>
+        <span class="hidden sm:inline text-slate-500">Halo, <%= it.user.username %></span>
+        <a href="/studio" class="bg-navy-900 text-white font-semibold px-4 py-2 rounded-lg hover:bg-navy-800"><i class="bx bx-grid-alt"></i> Studio</a>
+        <form method="post" action="/studio/logout" class="inline">
+          <button type="submit" class="text-slate-500 hover:text-red-600">Logout</button>
         </form>
       <% } else { %>
-        <a href="/admin/login" class="hover:text-indigo-600">Login</a>
-        <a href="/admin/register" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700">Register</a>
+        <a href="/studio/login" class="text-slate-600 hover:text-navy-900 px-2 py-2">Masuk</a>
+        <a href="/studio/register" class="bg-navy-900 text-white font-semibold px-4 py-2 rounded-lg hover:bg-navy-800">Register</a>
       <% } %>
     </div>
   </div>

@@ -2,3 +2,17 @@
 
 @source "../../views/**/*.eta.html";
 @source "../../public/**/*.js";
+
+/* Palet Dider "Navy Kampus + Emas UI" (Opsi A). */
+@theme {
+  --color-navy-50: #eef4fa;
+  --color-navy-100: #dbe7f3;
+  --color-navy-700: #25507e;
+  --color-navy-800: #1b3a5b;
+  --color-navy-900: #0f2a44;
+  --color-navy-950: #0b1f33;
+  --color-gold-100: #fdf0c3;
+  --color-gold-400: #f6c72b;
+  --color-gold-500: #f2b705;
+  --color-gold-600: #d9a404;
+}

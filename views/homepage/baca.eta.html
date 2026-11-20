@@ -1,29 +1,37 @@
 <% layout("/layouts/homepage") %>
 <% it.title = it.dokumen.nama + " — Dider" %>
 
-<div class="flex items-center justify-between mb-6">
-  <div>
-    <h1 class="text-xl font-bold"><%= it.dokumen.nama %></h1>
-    <p class="text-sm text-slate-500 mt-1">
-      oleh <%= it.dokumen.uploader ?? "Anonim" %> · <%= it.formatTanggal(it.dokumen.created_at) %>
-    </p>
+<div class="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-navy-900 mb-2">
+        <i class="bx bx-arrow-back"></i> Kembali ke rak
+      </a>
+      <h1 class="text-2xl font-extrabold text-navy-900 leading-tight"><%= it.dokumen.nama %></h1>
+      <p class="text-sm text-slate-500 mt-1.5">
+        oleh <%= it.dokumen.uploader ?? "Anonim" %> · <%= it.formatTanggal(it.dokumen.created_at) %>
+      </p>
+    </div>
+    <a href="/uploads/<%= it.dokumen.pdf_path %>"
+      class="inline-flex items-center gap-2 border border-slate-300 text-navy-900 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-slate-100">
+      <i class="bx bx-download"></i> Unduh PDF
+    </a>
   </div>
-  <a href="/" class="text-sm text-slate-500 hover:text-slate-700">← Kembali</a>
 </div>
 
-<p id="reader-status" class="text-center text-slate-500 py-10">Memuat dokumen…</p>
-<div id="flipbook-clip" class="mx-auto overflow-hidden w-full">
-  <div id="flipbook" class="w-full"></div>
+<p id="reader-status" class="text-center text-slate-500 py-16">Memuat dokumen…</p>
+<div id="flipbook-clip" class="overflow-hidden w-full mt-8">
+  <div id="flipbook" class="mx-auto"></div>
 </div>
 
-<div class="mt-4 text-center space-x-3">
-  <button id="prev" class="border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">← Sebelumnya</button>
-  <span id="page-info" class="text-sm text-slate-500">-</span>
-  <button id="next" class="border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Berikutnya →</button>
-</div>
-
-<div class="mt-4 text-center">
-  <a href="/uploads/<%= it.dokumen.pdf_path %>" class="text-indigo-600 hover:underline text-sm">Unduh PDF</a>
+<div class="mt-8 mb-10 flex items-center justify-center gap-4">
+  <button id="prev" class="inline-flex items-center gap-1.5 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-semibold text-navy-900 hover:bg-slate-100">
+    <i class="bx bx-chevron-left text-lg"></i> Sebelumnya
+  </button>
+  <span id="page-info" class="text-sm font-medium text-slate-500 min-w-32 text-center">-</span>
+  <button id="next" class="inline-flex items-center gap-1.5 bg-navy-900 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-navy-800">
+    Berikutnya <i class="bx bx-chevron-right text-lg"></i>
+  </button>
 </div>
 
 <link rel="stylesheet" href="/page-flip.css" />
@@ -77,10 +85,6 @@
 
       flip.loadFromImages(images);
 
-      // Bekukan lebar buku (bundle set width:100% saat konstruksi & loadFromImages)
-      // agar clip 50% pada halaman tunggal tidak menyempitkan halaman
-      flipbookEl.style.width = flipbookEl.clientWidth + "px";
-
       // Spread aktif (1 = halaman tunggal, 2 = spread ganda)
       const currentSpread = () =>
         flip.pages.getSpread()[flip.pages.currentSpreadIndex] || [];
@@ -114,27 +118,42 @@
         this.ctx.restore();
       };
 
-      // Sampul & halaman terakhir: halaman tunggal ukuran penuh di-tengahkan.
-      // Buku 2 halaman lebar; clip (50%) hanya menampilkan separuh yang berisi
-      // halaman: cover (kanan) → buku digeser -50%, halaman terakhir (kiri) → tanpa geser.
-      const applyBookWidth = () => {
+      // Tata letak buku: blok dibuat PERSIS selebar buku (2 x pageWidth) lalu
+      // dipusatkan dengan mx-auto. Dulu lebar blok dibekukan sebesar kontainer,
+      // sehingga saat buku lebih sempit dari kontainer (pageWidth dibatasi
+      // maxWidth) buku tidak berada di tengah layar.
+      const layoutBook = () => {
+        // 1) Beri tahu library lebar maksimum yang tersedia → hitung pageWidth.
+        flipbookEl.style.width = "100%";
+        flip.getUI().update();
+        const pageW = flip.getBoundsRect().pageWidth;
         const isPortrait = flip.render.getOrientation() === "portrait";
+
+        // 2) Kunci blok selebar buku supaya buku mengisi blok & terpusat.
+        flipbookEl.style.width = (isPortrait ? pageW : 2 * pageW) + "px";
+        flip.getUI().update();
+
+        // 3) Sampul & halaman terakhir hanya 1 halaman → geser setengah halaman
+        //    agar halaman itu yang berada di tengah layar.
         const spread = currentSpread();
         const single = spread.length === 1 && !isPortrait;
         if (!single) {
           flipbookEl.style.transform = "none";
-          clipEl.style.width = "100%";
           return;
         }
         const isLast = spread[0] === flip.pages.getPageCount() - 1;
-        flipbookEl.style.transform = isLast ? "none" : "translateX(-50%)";
-        clipEl.style.width = "50%";
+        flipbookEl.style.transform = isLast
+          ? `translateX(${pageW / 2}px)`
+          : `translateX(${-pageW / 2}px)`;
       };
+
+      // Ikut menyesuaikan saat jendela di-resize / rotasi layar.
+      window.addEventListener("resize", () => layoutBook());
 
       statusEl.style.display = "none";
       flip.on("init", () => {
         updateInfo();
-        applyBookWidth();
+        layoutBook();
       });
 
       // Suara kertas saat halaman dibuka (disintesis Web Audio API — tanpa file)
@@ -180,7 +199,7 @@
       // (ditarik tanpa ganti halaman) tidak memicunya.
       flip.on("flip", () => {
         updateInfo();
-        applyBookWidth();
+        layoutBook();
         playFlipSound();
       });
 

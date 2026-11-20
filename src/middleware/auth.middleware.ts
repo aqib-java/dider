@@ -37,17 +37,17 @@ export function destroySession(c: Context, db: Db) {
 export function requireAuth(db: Db) {
   return async (c: Context, next: Next) => {
     const userId = getUserId(c, db);
-    if (!userId) return c.redirect("/admin/login", 302);
+    if (!userId) return c.redirect("/studio/login", 302);
     c.set("userId", userId);
     await next();
   };
 }
 
-/** Middleware guest: halaman login/register — kalau sudah login, arahkan ke editor. */
+/** Middleware guest: halaman login/register — kalau sudah login, arahkan ke dashboard studio. */
 export function redirectIfAuthenticated(db: Db) {
   return async (c: Context, next: Next) => {
     const userId = getUserId(c, db);
-    if (userId) return c.redirect("/admin/dokumen", 302);
+    if (userId) return c.redirect("/studio", 302);
     await next();
   };
 }

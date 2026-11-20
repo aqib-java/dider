@@ -26,17 +26,20 @@ async function uploadAndRead(): Promise<{ id: string; html: string }> {
   const form = new FormData();
   form.append("nama", "Majalah Tes");
   form.append("pdf", new File([PDF_BODY], "majalah.pdf", { type: "application/pdf" }));
-  await app.request("/admin/dokumen", {
+  await app.request("/studio/dokumen", {
     method: "POST",
     headers: { cookie, ...formHeaders },
     body: form,
   });
 
-  const list = await app.request("/admin/dokumen", { headers: { cookie } });
-  const id = (await list.text()).match(/\/baca\/([0-9a-f-]+)/)?.[1];
+  const list = await app.request("/studio/dokumen", { headers: { cookie } });
+  const listHtml = await list.text();
+  const id = listHtml.match(/data-doc-id="([0-9a-f-]+)"/)?.[1];
+  const slug = listHtml.match(/\/majalah\/([a-z0-9-]+)/)?.[1];
   expect(id).toBeTruthy();
+  expect(slug).toBeTruthy();
 
-  const baca = await app.request(`/baca/${id}`);
+  const baca = await app.request(`/majalah/${slug}`);
   expect(baca.status).toBe(200);
   return { id: id!, html: await baca.text() };
 }
@@ -60,7 +63,7 @@ describe("Reader — bundle page-flip (flipbook)", () => {
     expect(typeof St.PageFlip).toBe("function");
   });
 
-  test("halaman /baca/:id memakai nama global yang benar (St.PageFlip)", async () => {
+  test("halaman /majalah/:slug memakai nama global yang benar (St.PageFlip)", async () => {
     const { id, html } = await uploadAndRead();
     try {
       expect(html).toContain("St.PageFlip");
@@ -70,7 +73,7 @@ describe("Reader — bundle page-flip (flipbook)", () => {
     }
   });
 
-  test("halaman /baca/:id memuat semua aset vendor yang dibutuhkan", async () => {
+  test("halaman /majalah/:slug memuat semua aset vendor yang dibutuhkan", async () => {
     const { id, html } = await uploadAndRead();
     try {
       expect(html).toContain("/vendor/page-flip/dist/js/page-flip.browser.js");
@@ -83,13 +86,16 @@ describe("Reader — bundle page-flip (flipbook)", () => {
       // array elemen HTML — tanpa argumen memicu "pagesElement is not iterable")
       expect(html).toContain("loadFromImages(images)");
       expect(html).not.toContain("updateFromHtml");
-      // Sampul & halaman terakhir: halaman tunggal ukuran penuh di-tengahkan (translate)
-      expect(html).toContain("applyBookWidth");
-expect(html).toContain("translateX(");
-      // Separuh kosong buku ter-clip (overflow-hidden) agar tidak ada area putih besar
+      // Buku dipusatkan: blok dibuat selebar buku (2 x pageWidth) + mx-auto,
+      // sampul/halaman terakhir digeser setengah halaman.
+      expect(html).toContain("layoutBook");
+      expect(html).toContain("mx-auto");
+      expect(html).toContain("translateX(");
+      expect(html).toContain("flip.getBoundsRect().pageWidth");
+      expect(html).not.toContain("flipbookEl.clientWidth");
+      // Area di luar buku ter-clip (overflow-hidden) agar tidak ada area putih besar
       expect(html).toContain('id="flipbook-clip"');
       expect(html).toContain("overflow-hidden");
-      expect(html).toContain('flipbookEl.style.width = flipbookEl.clientWidth + "px"');
       expect(html).toContain("drawBookShadow = function");
       // Scroll mouse: maju/mundur halaman (wheel + cooldown)
       expect(html).toContain('"wheel"');

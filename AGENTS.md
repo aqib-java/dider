@@ -50,9 +50,9 @@ src/
 │   ├── session.model.ts    #   sessions
 │   └── project.model.ts    #   projects (dokumen PDF: id, nama, pdf_path)
 ├── controllers/            # CONTROLLER — parse form → model → view/redirect
-│   ├── auth.controller.ts  #   /admin/login, /admin/register, /admin/logout
+│   ├── auth.controller.ts  #   /studio/login, /studio/register, /studio/logout
 │   ├── page.controller.ts  #   GET / (homepage), GET /baca/:id (reader flipbook)
-│   └── project.controller.ts # /admin/dokumen* — upload PDF, list, hapus
+│   └── project.controller.ts # /studio/dokumen* — upload PDF, list, hapus
 ├── middleware/
 │   ├── auth.middleware.ts  # getUserId / createSession / destroySession / requireAuth / redirectIfAuthenticated
 │   └── locals.middleware.ts # inject user + flash ke context untuk semua halaman
@@ -74,7 +74,7 @@ test/                       # unit test
 
 - File template bernama `*.eta.html` — jangan ubah ekstensi (konfigurasi
   `defaultExtension` di `src/view.ts`).
-- Setiap halaman diawali `<% layout("/layouts/admin") %>` (atau homepage).
+- Setiap halaman diawali `<% layout("/layouts/studio") %>` (atau homepage).
   **Path layout/include WAJIB diawali `/`** agar relatif ke root `views/`
   (misal `include("/partials/errors", {...})`) — tanpa `/`, Eta resolve relatif
   ke folder template dan gagal.
@@ -87,7 +87,7 @@ test/                       # unit test
 
 ### Upload PDF & Reader
 
-- Upload di `POST /admin/dokumen` (multipart, wajib login). Validasi:
+- Upload di `POST /studio/dokumen` (multipart, wajib login). Validasi:
   `file.type === "application/pdf"` ATAU ekstensi `.pdf`, maks **50MB**.
   JANGAN pindahkan validasi ini tanpa tes.
 - File disimpan `uploads/<uuid>.pdf` (folder di-gitignore; path dari env
@@ -112,7 +112,7 @@ test/                       # unit test
 
 ### Auth & Middleware
 
-- `requireAuth(db)` redirect ke `/admin/login` (bukan 401 JSON).
+- `requireAuth(db)` redirect ke `/studio/login` (bukan 401 JSON).
 - `redirectIfAuthenticated(db)` untuk halaman guest (login/register).
 - `injectLocals(db)` dipasang sekali di `web.ts` — resolve `it.user` + `it.flash`.
 - Session cookie `sid` (httpOnly, 7 hari). Password wajib `Bun.password`

@@ -1,46 +1,136 @@
 <% layout("/layouts/homepage") %>
-<% it.title = "Dider — Digital Reader" %>
+<% it.title = "Dider — Baca dokumen & majalah digital CCIT FTUI" %>
 
-<header class="text-center py-10">
-  <h1 class="text-4xl font-extrabold">
-    Baca <span class="text-indigo-600">dokumen & majalah</span> digital
-  </h1>
-  <p class="mt-3 text-slate-600 max-w-xl mx-auto">
-    Upload PDF, dan baca dengan pengalaman flipbook seperti majalah sungguhan.
-  </p>
-</header>
+<%
+  const featured = it.dokumen.length > 0 ? it.dokumen[0] : null;
+  const rest = it.dokumen.slice(1);
+  const baru = (iso) => {
+    const t = new Date(String(iso).replace(" ", "T") + "Z").getTime();
+    return !isNaN(t) && Date.now() - t < 7 * 24 * 60 * 60 * 1000;
+  };
+%>
 
-<section class="max-w-5xl mx-auto">
-  <div class="flex items-center justify-between mb-5">
-    <h2 class="text-xl font-bold">Rak Buku</h2>
-    <div class="flex flex-wrap gap-2">
-      <a href="/?rak=latest"
-        class="px-3 py-1.5 rounded-lg text-sm font-semibold <%= it.rak === 'latest' ? 'bg-indigo-600 text-white' : 'border border-slate-300 hover:bg-slate-100' %>">Latest</a>
-      <a href="/?rak=popular"
-        class="px-3 py-1.5 rounded-lg text-sm font-semibold <%= it.rak === 'popular' ? 'bg-indigo-600 text-white' : 'border border-slate-300 hover:bg-slate-100' %>">Popular</a>
+<!-- HERO -->
+<section class="relative overflow-hidden bg-gradient-to-b from-navy-50 via-white to-white border-b border-slate-100">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 grid lg:grid-cols-2 gap-10 items-center">
+    <div>
+      <span class="inline-flex items-center gap-2 bg-gold-500/15 text-navy-900 text-xs font-semibold px-3 py-1.5 rounded-full">
+        <i class="bx bx-bookmark text-gold-600"></i> Media Kampus CCIT FTUI
+      </span>
+      <h1 class="mt-4 text-4xl sm:text-5xl font-extrabold tracking-tight text-navy-900 leading-[1.1]">
+        Baca <span class="text-navy-700 decoration-gold-500 decoration-4 underline-offset-4">dokumen <%~ "&" %> majalah</span> digital
+      </h1>
+      <p class="mt-4 text-slate-600 max-w-lg leading-relaxed">
+        Publikasi CCIT FTUI dibuka dengan pengalaman flipbook — halaman bisa dibalik seperti majalah sungguhan, langsung di browser.
+      </p>
+      <div class="mt-7 flex flex-wrap items-center gap-3">
+        <a href="/jelajah" class="bg-gold-500 text-navy-950 font-semibold px-5 py-3 rounded-xl hover:bg-gold-600 inline-flex items-center gap-2">
+          <i class="bx bx-collection text-lg"></i> Jelajahi Semua
+        </a>
+        <% if (featured) { %>
+          <a href="/majalah/<%= featured.slug %>" class="border-2 border-navy-900 text-navy-900 font-semibold px-5 py-3 rounded-xl hover:bg-navy-900 hover:text-white inline-flex items-center gap-2">
+            <i class="bx bx-book-open text-lg"></i> Baca Edisi Terbaru
+          </a>
+        <% } %>
+      </div>
+      <% if (it.dokumen.length > 0) { %>
+        <form method="get" action="/jelajah" class="mt-6 flex max-w-md items-center gap-2">
+          <div class="relative flex-1">
+            <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="search" name="q" placeholder="Cari judul majalah…"
+              class="w-full border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+          </div>
+          <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-navy-800">Cari</button>
+        </form>
+      <% } %>
     </div>
+
+    <div class="relative h-64 sm:h-80 hidden sm:block">
+      <% if (it.dokumen.length === 0) { %>
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-navy-100 to-slate-100 border border-slate-200 grid place-items-center">
+          <div class="text-center">
+            <i class="bx bx-book-add text-6xl text-navy-300"></i>
+            <p class="text-sm text-slate-500 mt-2">Rak masih kosong</p>
+          </div>
+        </div>
+      <% } else { %>
+        <% const preview = it.dokumen.slice(0, 3).reverse(); %>
+        <% preview.forEach(function (d, i) { %>
+          <a href="/majalah/<%= d.slug %>"
+            class="absolute rounded-xl overflow-hidden bg-white border border-slate-200 shadow-xl transition-transform hover:-translate-y-2
+                   <%= i === 0 ? 'left-0 top-6 w-36 sm:w-44 -rotate-6' : (i === 1 ? 'left-24 sm:left-32 top-0 w-40 sm:w-48 rotate-2 z-10' : 'right-0 top-8 w-36 sm:w-44 rotate-6') %>">
+            <div class="aspect-[3/4] bg-slate-100">
+              <canvas class="book-cover w-full h-full block" data-src="/uploads/<%= d.pdf_path.replace(/^uploads\//, '') %>"></canvas>
+            </div>
+          </a>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<!-- RAK: etalase terbaru, tanpa filter -->
+<section id="rak" class="max-w-6xl mx-auto px-4 sm:px-6 py-12 scroll-mt-20">
+  <div class="flex flex-wrap items-end justify-between gap-4 mb-7">
+    <div>
+      <h2 class="text-2xl font-extrabold text-navy-900">Rak Buku</h2>
+      <p class="text-sm text-slate-500 mt-1">Terbitan terbaru dari CCIT FTUI</p>
+    </div>
+    <% if (it.total > it.dokumen.length) { %>
+      <a href="/jelajah" class="inline-flex items-center gap-2 text-sm font-semibold text-navy-900 hover:text-gold-600">
+        Lihat semua <%= it.total %> terbitan <i class="bx bx-right-arrow-alt text-lg"></i>
+      </a>
+    <% } %>
   </div>
 
   <% if (it.dokumen.length === 0) { %>
-    <p class="text-slate-500">Belum ada buku di rak ini.</p>
-  <% } else { %>
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-      <% it.dokumen.forEach(function (d) { %>
-        <a href="/baca/<%= d.id %>"
-          class="book group block rounded-lg overflow-hidden bg-white border border-slate-200 shadow-sm
-                 transition-transform duration-200 ease-out
-                 hover:-translate-y-2 hover:shadow-xl hover:border-indigo-300 hover:ring-2 hover:ring-indigo-200">
-          <div class="aspect-[3/4] bg-slate-100 overflow-hidden">
-            <canvas class="book-cover w-full h-full block" data-src="/uploads/<%= d.pdf_path.replace(/^uploads\//, '') %>"></canvas>
-          </div>
-          <div class="p-2">
-            <p class="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-indigo-600"><%= d.nama %></p>
-            <p class="text-xs text-slate-400 mt-1"><%= d.views %> dibaca</p>
-            <p class="text-xs text-slate-400 mt-0.5">oleh <%= d.uploader ?? "Anonim" %> · <%= it.formatTanggal(d.created_at) %></p>
-          </div>
-        </a>
-      <% }) %>
+    <div class="bg-white border border-dashed border-slate-300 rounded-2xl px-6 py-16 text-center">
+      <i class="bx bx-book-add text-5xl text-slate-300"></i>
+      <p class="font-semibold text-navy-900 mt-3 mb-1">Rak masih kosong</p>
+      <p class="text-sm text-slate-500 mb-5">Masuk ke Studio untuk mengunggah edisi pertama.</p>
+      <a href="/studio" class="bg-navy-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-navy-800 inline-flex items-center gap-2">
+        <i class="bx bx-upload"></i> Buka Studio
+      </a>
     </div>
+  <% } else { %>
+
+    <!-- Kartu unggulan -->
+    <div class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden mb-10 grid sm:grid-cols-[220px_1fr]">
+      <a href="/majalah/<%= featured.slug %>" class="block bg-slate-100 aspect-[3/4] sm:aspect-auto">
+        <canvas class="book-cover w-full h-full block" data-src="/uploads/<%= featured.pdf_path.replace(/^uploads\//, '') %>"></canvas>
+      </a>
+      <div class="p-6 sm:p-8 flex flex-col justify-center">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-[11px] font-bold tracking-widest uppercase text-navy-700">Terbaru</span>
+          <% if (baru(featured.created_at)) { %>
+            <span class="bg-gold-500 text-navy-950 text-[11px] font-bold px-2 py-0.5 rounded-full">BARU</span>
+          <% } %>
+          <% if (it.populer.indexOf(featured.id) !== -1) { %>
+            <span class="bg-navy-900 text-white text-[11px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <i class="bx bxs-flame text-gold-400"></i> POPULER
+            </span>
+          <% } %>
+        </div>
+        <h3 class="text-2xl font-extrabold text-navy-900 leading-tight"><%= featured.nama %></h3>
+        <p class="text-sm text-slate-500 mt-2">
+          oleh <%= featured.uploader ?? "Anonim" %> · <%= it.formatTanggal(featured.created_at) %> · <%= featured.views %>× dibaca
+        </p>
+        <div class="mt-5">
+          <a href="/majalah/<%= featured.slug %>"
+            class="inline-flex items-center gap-2 bg-gold-500 text-navy-950 font-semibold px-5 py-2.5 rounded-xl hover:bg-gold-600">
+            <i class="bx bx-book-open text-lg"></i> Baca Sekarang
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <% if (rest.length > 0) { %>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+        <% rest.forEach(function (d) { %>
+          <%~ include("/partials/book-card", { kartu: d, populer: it.populer }) %>
+        <% }) %>
+      </div>
+    <% } %>
   <% } %>
 </section>
 
@@ -51,6 +141,7 @@
   document.querySelectorAll("canvas.book-cover").forEach(async (canvas) => {
     const url = canvas.dataset.src;
     if (!url) return;
+    canvas.parentElement.classList.add("animate-pulse", "bg-slate-200");
     try {
       const pdf = await pdfjsLib.getDocument({ url }).promise;
       const page = await pdf.getPage(1);
@@ -63,6 +154,8 @@
       await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
     } catch {
       // PDF gagal dimuat — biarkan kotak kosong, tidak menghalangi rak.
+    } finally {
+      canvas.parentElement.classList.remove("animate-pulse", "bg-slate-200");
     }
   });
 </script>

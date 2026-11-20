@@ -1,0 +1,34 @@
+<% 
+  // Partial kartu sampul untuk homepage & halaman jelajah.
+  // Dipanggil: include("/partials/book-card", { kartu: dokumen, populer: [id,...] })
+  const isPopuler = Array.isArray(it.populer) && it.populer.indexOf(it.kartu.id) !== -1;
+  const isBaru = (function () {
+    const t = new Date(String(it.kartu.created_at).replace(" ", "T") + "Z").getTime();
+    return !isNaN(t) && Date.now() - t < 7 * 24 * 60 * 60 * 1000;
+  })();
+%>
+<a href="/majalah/<%= it.kartu.slug %>"
+  class="book group block rounded-xl overflow-hidden bg-white border border-slate-200 shadow-sm
+         transition-transform duration-200 ease-out
+         hover:-translate-y-2 hover:shadow-xl hover:border-gold-500 hover:ring-2 hover:ring-gold-500/30">
+  <div class="relative aspect-[3/4] bg-slate-100 overflow-hidden">
+    <canvas class="book-cover w-full h-full block" data-src="/uploads/<%= it.kartu.pdf_path.replace(/^uploads\//, '') %>"></canvas>
+    <div class="absolute top-2 left-2 flex flex-col items-start gap-1">
+      <% if (isBaru) { %>
+        <span class="bg-gold-500 text-navy-950 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">BARU</span>
+      <% } %>
+      <% if (isPopuler) { %>
+        <span class="bg-navy-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm inline-flex items-center gap-1">
+          <i class="bx bxs-flame text-gold-400"></i> POPULER
+        </span>
+      <% } %>
+    </div>
+  </div>
+  <div class="p-3">
+    <p class="text-sm font-semibold leading-tight line-clamp-2 text-navy-900 group-hover:text-navy-700"><%= it.kartu.nama %></p>
+    <p class="text-[11px] text-slate-400 mt-1.5"><%= it.kartu.views %>× dibaca</p>
+    <p class="text-[11px] text-slate-400 mt-0.5">
+      oleh <%= it.kartu.uploader ?? "Anonim" %> · <%= it.formatTanggal(it.kartu.created_at) %>
+    </p>
+  </div>
+</a>

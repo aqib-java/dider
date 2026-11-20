@@ -1,0 +1,107 @@
+<% layout("/layouts/homepage") %>
+<% it.title = "Jelajah — Dider" %>
+<% it.populer = it.populer ?? [] %>
+
+<%
+  const opsi = [
+    { key: "latest", label: "Terbaru", ikon: "bx-time" },
+    { key: "popular", label: "Terpopuler", ikon: "bx-flame" },
+    { key: "oldest", label: "Terlama", ikon: "bx-history" },
+  ];
+  const chip = (key) => {
+    const aktif = it.urut === key;
+    return aktif
+      ? "inline-flex items-center gap-1.5 bg-navy-900 text-white px-4 py-2 rounded-lg shadow-sm"
+      : "inline-flex items-center gap-1.5 text-slate-600 hover:text-navy-900 hover:bg-white px-4 py-2 rounded-lg";
+  };
+%>
+
+<section class="bg-gradient-to-b from-navy-50 to-white border-b border-slate-100">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-8">
+    <a href="/" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-navy-900 mb-3">
+      <i class="bx bx-arrow-back"></i> Kembali ke beranda
+    </a>
+    <h1 class="text-3xl font-extrabold text-navy-900">Jelajahi Perpustakaan</h1>
+    <p class="text-sm text-slate-500 mt-1.5"><%= it.total %> terbitan dari CCIT FTUI</p>
+
+    <form method="get" action="/jelajah" class="mt-6 flex flex-col sm:flex-row gap-2 max-w-2xl">
+      <div class="relative flex-1">
+        <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input type="search" name="q" value="<%= it.q %>" placeholder="Cari judul atau nama pengunggah…"
+          class="w-full border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+      </div>
+      <input type="hidden" name="urut" value="<%= it.urut %>" />
+      <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-navy-800">
+        <i class="bx bx-search"></i> Cari
+      </button>
+    </form>
+  </div>
+</section>
+
+<section class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+  <!-- Filter urutan -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div class="inline-flex bg-slate-100 p-1 rounded-xl text-sm font-semibold">
+      <% opsi.forEach(function (o) { %>
+        <a href="/jelajah?urut=<%= o.key %><%= it.q ? '&q=' + encodeURIComponent(it.q) : '' %>" class="<%= chip(o.key) %>">
+          <i class="bx <%= o.ikon %>"></i> <%= o.label %>
+        </a>
+      <% }) %>
+    </div>
+    <% if (it.q) { %>
+      <a href="/jelajah?urut=<%= it.urut %>" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600">
+        <i class="bx bx-x-circle"></i> Hapus pencarian "<%= it.q %>"
+      </a>
+    <% } %>
+  </div>
+
+  <% if (it.dokumen.length === 0) { %>
+    <div class="bg-white border border-dashed border-slate-300 rounded-2xl px-6 py-16 text-center">
+      <i class="bx bx-search-alt-2 text-5xl text-slate-300"></i>
+      <p class="font-semibold text-navy-900 mt-3 mb-1">
+        <%= it.q ? 'Tidak ada hasil untuk "' + it.q + '"' : "Belum ada terbitan" %>
+      </p>
+      <p class="text-sm text-slate-500 mb-5">
+        <%= it.q ? "Coba kata kunci lain atau lihat semua terbitan." : "Masuk ke Studio untuk mengunggah edisi pertama." %>
+      </p>
+      <a href="/jelajah" class="bg-navy-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-navy-800 inline-flex items-center gap-2">
+        <i class="bx bx-reset"></i> Lihat semua
+      </a>
+    </div>
+  <% } else { %>
+    <p class="text-sm text-slate-500 mb-4">
+      <%= it.dokumen.length %> hasil<%= it.q ? ' untuk "' + it.q + '"' : "" %>
+    </p>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      <% it.dokumen.forEach(function (d) { %>
+        <%~ include("/partials/book-card", { kartu: d, populer: it.populer }) %>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<script type="module">
+  import * as pdfjsLib from "/vendor/pdfjs-dist/build/pdf.min.mjs";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs-dist/build/pdf.worker.min.mjs";
+
+  document.querySelectorAll("canvas.book-cover").forEach(async (canvas) => {
+    const url = canvas.dataset.src;
+    if (!url) return;
+    canvas.parentElement.classList.add("animate-pulse", "bg-slate-200");
+    try {
+      const pdf = await pdfjsLib.getDocument({ url }).promise;
+      const page = await pdf.getPage(1);
+      const base = page.getViewport({ scale: 1 });
+      const targetW = canvas.clientWidth || 240;
+      const scale = targetW / base.width;
+      const viewport = page.getViewport({ scale });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+    } catch {
+      // PDF gagal dimuat — biarkan kotak kosong, tidak menghalangi grid.
+    } finally {
+      canvas.parentElement.classList.remove("animate-pulse", "bg-slate-200");
+    }
+  });
+</script>

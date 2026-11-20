@@ -26,7 +26,7 @@ terpisah. PDF disimpan di `uploads/` dan dibaca via **pdf.js** + **StPageFlip**.
 ```mermaid
 flowchart LR
     Browser["Browser<br/>form POST · Tailwind + vanilla JS"]
-    Web["Hono Web Routes<br/>/ · /admin/* · /baca/:id"]
+    Web["Hono Web Routes<br/>/ · /studio/* · /baca/:id"]
     Ctrl["Controllers<br/>auth · page · project"]
     Model["Models<br/>user · session · project"]
     View["Eta Views<br/>views/ · layouts + partials"]
@@ -62,9 +62,9 @@ dider/
 │   │   ├── session.model.ts    #   sessions: create/find/delete session cookie
 │   │   └── project.model.ts    #   projects: list/listShelf/listTrashed, create, incrementViews, softDelete, restore, delete
 │   ├── controllers/            # CONTROLLER — form POST → model → view/redirect
-│   │   ├── auth.controller.ts  #   /admin/login, /admin/register, /admin/logout
+│   │   ├── auth.controller.ts  #   /studio/login, /studio/register, /studio/logout
 │   │   ├── page.controller.ts  #   GET / (rak buku), GET /baca/:id (reader, +views)
-│   │   └── project.controller.ts # /admin/dokumen* — upload, list, trash, restore, hapus
+│   │   └── project.controller.ts # /studio/dokumen* — upload, list, trash, restore, hapus
 │   ├── middleware/
 │   │   ├── auth.middleware.ts  # session helpers + requireAuth + guest
 │   │   └── locals.middleware.ts # inject user login + flash ke context
@@ -103,18 +103,18 @@ Build CSS produksi: `bun run build:css` — hasilnya `public/style.css`.
 | GET | `/` | `homepage/index` — rak buku (`?rak=latest\|popular`) | - |
 | GET | `/health` | health check | - |
 | GET | `/baca/:id` | `homepage/baca` — reader flipbook; menambah `views` | - |
-| GET | `/admin/login` | `admin/auth/login` | guest |
-| POST | `/admin/login` | login → `/admin/dokumen` | guest |
-| GET | `/admin/register` | `admin/auth/register` | guest |
-| POST | `/admin/register` | buat user → `/admin/dokumen` | guest |
-| POST | `/admin/logout` | logout → `/` | ✓ |
-| GET | `/admin/dokumen` | `admin/dokumen/index` — list + form upload | ✓ |
-| POST | `/admin/dokumen` | upload PDF (multipart) | ✓ |
-| POST | `/admin/dokumen/:id/delete` | soft delete → trash (file tetap) | ✓ |
-| GET | `/admin/dokumen/trash` | `admin/dokumen/trash` — daftar di trash | ✓ |
-| POST | `/admin/dokumen/:id/restore` | pulihkan dari trash | ✓ |
-| POST | `/admin/dokumen/:id/hard-delete` | hapus permanen (hanya dari trash) | ✓ |
-| POST | `/admin/dokumen/:id/trash-and-delete` | hapus permanen langsung dari daftar | ✓ |
+| GET | `/studio/login` | `admin/auth/login` | guest |
+| POST | `/studio/login` | login → `/studio/dokumen` | guest |
+| GET | `/studio/register` | `admin/auth/register` | guest |
+| POST | `/studio/register` | buat user → `/studio/dokumen` | guest |
+| POST | `/studio/logout` | logout → `/` | ✓ |
+| GET | `/studio/dokumen` | `admin/dokumen/index` — list + form upload | ✓ |
+| POST | `/studio/dokumen` | upload PDF (multipart) | ✓ |
+| POST | `/studio/dokumen/:id/delete` | soft delete → trash (file tetap) | ✓ |
+| GET | `/studio/dokumen/trash` | `admin/dokumen/trash` — daftar di trash | ✓ |
+| POST | `/studio/dokumen/:id/restore` | pulihkan dari trash | ✓ |
+| POST | `/studio/dokumen/:id/hard-delete` | hapus permanen (hanya dari trash) | ✓ |
+| POST | `/studio/dokumen/:id/trash-and-delete` | hapus permanen langsung dari daftar | ✓ |
 
 Semua mutasi via form POST (PRG). Upload divalidasi: hanya `application/pdf`
 (atau ekstensi `.pdf`), maksimal **50MB**, disimpan sebagai

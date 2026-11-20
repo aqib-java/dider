@@ -1,0 +1,24 @@
+<dialog id="upload-modal" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+  <form method="post" action="/studio/dokumen" enctype="multipart/form-data" class="p-6 space-y-4">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="font-bold text-lg text-navy-900">Upload Dokumen</h2>
+        <p class="text-sm text-slate-500">Format PDF, maksimal 50MB.</p>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" aria-label="Tutup"
+        class="text-2xl text-slate-400 hover:text-slate-700 leading-none"><i class="bx bx-x"></i></button>
+    </div>
+    <div>
+      <label for="nama" class="block text-sm font-medium mb-1.5">Nama Dokumen</label>
+      <input id="nama" name="nama" required placeholder="Majalah Angkatan 2026"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+    </div>
+    <div>
+      <label for="pdf" class="block text-sm font-medium mb-1.5">File PDF</label>
+      <input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required
+        class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-navy-900 file:text-white file:text-sm hover:file:bg-navy-800" />
+    </div>
+    <button type="submit"
+      class="w-full bg-gold-500 text-navy-950 text-sm font-semibold py-2.5 rounded-lg hover:bg-gold-600"><i class="bx bx-upload"></i> Upload PDF</button>
+  </form>
+</dialog>
