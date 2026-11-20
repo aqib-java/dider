@@ -60,7 +60,7 @@ describe("Peran & kepemilikan dokumen", () => {
     expect(mhsHtml).toContain("Kontributor");
   });
 
-  test("kontributor hanya melihat dokumennya sendiri, admin melihat semua", async () => {
+  test("Dokumen Saya berisi milik sendiri; Semua Postingan (admin) berisi semua", async () => {
     const app = createTestApp();
     const adminCookie = await registerUser(app, "adminccit");
     const mhsCookie = await registerUser(app, "mahasiswa");
@@ -71,12 +71,26 @@ describe("Peran & kepemilikan dokumen", () => {
     const mhsList = await (await app.request("/studio/dokumen", { headers: { cookie: mhsCookie } })).text();
     expect(mhsList).toContain("Tugas Mahasiswa");
     expect(mhsList).not.toContain("Dokumen Internal");
-    expect(mhsList).toContain("Dokumen saya");
+    expect(mhsList).toContain("Dokumen Saya");
 
-    const adminList = await (await app.request("/studio/dokumen", { headers: { cookie: adminCookie } })).text();
-    expect(adminList).toContain("Dokumen Internal");
-    expect(adminList).toContain("Tugas Mahasiswa");
-    expect(adminList).toContain("Semua dokumen");
+    // Admin: "Dokumen Saya" tetap hanya miliknya
+    const adminOwn = await (await app.request("/studio/dokumen", { headers: { cookie: adminCookie } })).text();
+    expect(adminOwn).toContain("Dokumen Internal");
+    expect(adminOwn).not.toContain("Tugas Mahasiswa");
+    expect(adminOwn).not.toContain('href="/studio/postingan" aria-current');
+
+    // Admin: semua dokumen ada di halaman Semua Postingan
+    const postingan = await app.request("/studio/postingan", { headers: { cookie: adminCookie } });
+    expect(postingan.status).toBe(200);
+    const postinganHtml = await postingan.text();
+    expect(postinganHtml).toContain("Dokumen Internal");
+    expect(postinganHtml).toContain("Tugas Mahasiswa");
+    expect(postinganHtml).toContain("Semua Postingan");
+
+    // Kontributor tidak boleh mengakses Semua Postingan
+    const ditolak = await app.request("/studio/postingan", { headers: { cookie: mhsCookie } });
+    expect(ditolak.status).toBe(302);
+    expect(ditolak.headers.get("location")).toBe("/studio");
 
     cleanup(idInternal, idMhs);
   });

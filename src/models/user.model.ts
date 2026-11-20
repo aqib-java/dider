@@ -59,4 +59,37 @@ export class UserModel {
     const ok = await Bun.password.verify(password, row.password_hash);
     return ok ? row.id : null;
   }
+
+  /** Daftar semua akun + jumlah dokumennya (khusus admin). */
+  list(): (PublicUser & { jumlah_dokumen: number })[] {
+    return this.db
+      .query(
+        `SELECT u.id, u.username, u.full_name, u.role, u.created_at,
+                (SELECT COUNT(*) FROM projects p
+                  WHERE p.uploader_id = u.id AND p.status != 'trashed') AS jumlah_dokumen
+           FROM users u
+          ORDER BY u.role = 'admin' DESC, u.username COLLATE NOCASE ASC`
+      )
+      .all() as (PublicUser & { jumlah_dokumen: number })[];
+  }
+
+  countAdmins(): number {
+    const row = this.db
+      .query("SELECT COUNT(*) AS c FROM users WHERE role = 'admin'")
+      .get() as { c: number };
+    return row.c;
+  }
+
+  /** Ubah peran user. Return false kalau user tidak ada. */
+  setRole(id: string, role: Role): boolean {
+    const res = this.db.query("UPDATE users SET role = ? WHERE id = ?").run(role, id);
+    return res.changes > 0;
+  }
+
+  /** Reset password oleh admin (hash argon2). Return false kalau user tidak ada. */
+  async setPassword(id: string, password: string): Promise<boolean> {
+    const hash = await Bun.password.hash(password);
+    const res = this.db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, id);
+    return res.changes > 0;
+  }
 }

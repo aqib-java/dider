@@ -1,0 +1,90 @@
+import { Hono } from "hono";
+import type { Context } from "hono";
+import type { Db } from "../db";
+import { UserModel, type PublicUser, type Role } from "../models/user.model";
+import { requireAdmin } from "../middleware/auth.middleware";
+import { view, redirect, flashSuccess, flashError } from "../view";
+
+function currentUser(c: Context): PublicUser | null {
+  return (c.get("user" as never) as PublicUser | null) ?? null;
+}
+
+/** Controller: /studio/akun — manajemen akun (khusus admin CCIT). */
+export function accountController(db: Db) {
+  const app = new Hono();
+
+  if (!db.sqlite) {
+    app.all("*", (c) => c.text("mode supabase belum diimplementasikan", 501));
+    return app;
+  }
+
+  const users = new UserModel(db.sqlite);
+
+  // GET /studio/akun — daftar akun + jumlah dokumen
+  app.get("/akun", requireAdmin(db), (c) =>
+    view(c, "studio/akun/index", {
+      daftar: users.list(),
+      diriSendiri: currentUser(c)?.id ?? null,
+    })
+  );
+
+  // POST /studio/akun/:id/role — ubah peran
+  app.post("/akun/:id/role", requireAdmin(db), async (c) => {
+    const id = c.req.param("id");
+    const body = await c.req.parseBody();
+    const role = String(body.role ?? "") as Role;
+
+    if (role !== "admin" && role !== "kontributor") {
+      flashError(c, "Peran tidak dikenal.");
+      return redirect(c, "/studio/akun");
+    }
+
+    const target = users.findPublic(id);
+    if (!target) {
+      flashError(c, "Akun tidak ditemukan.");
+      return redirect(c, "/studio/akun");
+    }
+
+    // Jangan sampai admin terakhir hilang (tidak ada yang bisa mengelola lagi).
+    if (target.role === "admin" && role === "kontributor" && users.countAdmins() <= 1) {
+      flashError(c, "Tidak bisa menurunkan admin terakhir. Angkat admin lain dulu.");
+      return redirect(c, "/studio/akun");
+    }
+    // Cegah menurunkan diri sendiri agar tidak terkunci di luar halaman admin.
+    if (target.id === currentUser(c)?.id && role === "kontributor") {
+      flashError(c, "Kamu tidak bisa menurunkan peranmu sendiri.");
+      return redirect(c, "/studio/akun");
+    }
+    if (target.role === role) {
+      flashError(c, `${target.username} sudah berperan ${role}.`);
+      return redirect(c, "/studio/akun");
+    }
+
+    users.setRole(id, role);
+    flashSuccess(c, `Peran ${target.username} diubah menjadi ${role}.`);
+    return redirect(c, "/studio/akun");
+  });
+
+  // POST /studio/akun/:id/password — reset password oleh admin
+  app.post("/akun/:id/password", requireAdmin(db), async (c) => {
+    const id = c.req.param("id");
+    const body = await c.req.parseBody();
+    const password = String(body.password ?? "");
+
+    const target = users.findPublic(id);
+    if (!target) {
+      flashError(c, "Akun tidak ditemukan.");
+      return redirect(c, "/studio/akun");
+    }
+    if (password.length < 6) {
+      flashError(c, "Password baru minimal 6 karakter.");
+      return redirect(c, "/studio/akun");
+    }
+
+    await users.setPassword(id, password);
+    flashSuccess(c, `Password ${target.username} direset.`);
+    return redirect(c, "/studio/akun");
+  });
+
+  return app;
+}
