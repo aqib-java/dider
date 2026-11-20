@@ -51,6 +51,23 @@ export function migrate(db: Database) {
     );
   `);
 
+  // Peran user: 'admin' (internal CCIT) atau 'kontributor' (mahasiswa/pengunggah).
+  const userCols = db.query("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.some((c) => c.name === "role")) {
+    db.exec(
+      "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'kontributor' CHECK (role IN ('admin','kontributor'));"
+    );
+  }
+  // Jangan sampai tidak ada admin sama sekali: user terlama jadi admin.
+  const adminCount = db.query("SELECT COUNT(*) AS c FROM users WHERE role = 'admin'").get() as {
+    c: number;
+  };
+  if (adminCount.c === 0) {
+    db.exec(
+      "UPDATE users SET role = 'admin' WHERE id = (SELECT id FROM users ORDER BY created_at ASC, id ASC LIMIT 1);"
+    );
+  }
+
   // Migrasi skema lama → baru: projects lama (ukuran/halaman JSON) di-drop,
   // diganti skema dokumen PDF (pdf_path).
   const cols = db.query("PRAGMA table_info(projects)").all() as { name: string }[];
@@ -91,6 +108,22 @@ export function migrate(db: Database) {
   }
   backfillSlugs(db);
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug);");
+
+  // Status dokumen = sumber kebenaran tampil/tidaknya sebuah dokumen.
+  // archived_at & deleted_at hanya jejak waktu (kapan diarsipkan/dibuang).
+  if (!projectCols.some((c) => c.name === "archived_at")) {
+    db.exec("ALTER TABLE projects ADD COLUMN archived_at TEXT;");
+  }
+  if (!projectCols.some((c) => c.name === "status")) {
+    db.exec(
+      "ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('published','archived','trashed'));"
+    );
+    // Backfill data lama: dokumen di trash → 'trashed', sisanya tetap terbit.
+    db.exec("UPDATE projects SET status = 'trashed' WHERE deleted_at IS NOT NULL;");
+  }
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status, uploader_id);"
+  );
 }
 
 /** Isi slug untuk baris lama (dan yang masih NULL) supaya unik & stabil. */

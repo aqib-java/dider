@@ -1,10 +1,14 @@
 import { randomUUID } from "crypto";
 import type { Database } from "bun:sqlite";
 
+/** Peran user: 'admin' = internal CCIT, 'kontributor' = pengunggah biasa. */
+export type Role = "admin" | "kontributor";
+
 export type PublicUser = {
   id: string;
   username: string;
   full_name: string | null;
+  role: Role;
   created_at: string;
 };
 
@@ -22,7 +26,7 @@ export class UserModel {
   /** Ambil data publik user by id (tanpa password). */
   findPublic(id: string): PublicUser | null {
     return this.db
-      .query("SELECT id, username, full_name, created_at FROM users WHERE id = ?")
+      .query("SELECT id, username, full_name, role, created_at FROM users WHERE id = ?")
       .get(id) as PublicUser | null;
   }
 
@@ -34,11 +38,14 @@ export class UserModel {
   ): Promise<string> {
     const id = randomUUID();
     const hash = await Bun.password.hash(password);
+    // User pertama otomatis admin supaya selalu ada yang bisa mengelola.
+    const { c } = this.db.query("SELECT COUNT(*) AS c FROM users").get() as { c: number };
+    const role: Role = c === 0 ? "admin" : "kontributor";
     this.db
       .query(
-        "INSERT INTO users (id, username, full_name, password_hash) VALUES (?, ?, ?, ?)"
+        "INSERT INTO users (id, username, full_name, password_hash, role) VALUES (?, ?, ?, ?, ?)"
       )
-      .run(id, username, fullName ?? null, hash);
+      .run(id, username, fullName ?? null, hash, role);
     return id;
   }
 

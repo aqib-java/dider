@@ -576,9 +576,10 @@ describe("Web — dashboard admin", () => {
 
     const html = await (await app.request("/studio", { headers: { cookie } })).text();
     expect(html).toContain("Dashboard");
-    expect(html).toContain("Total Dokumen");
+    expect(html).toContain(">Terbit<");
     expect(html).toContain("Total Dibaca");
-    expect(html).toContain("Isi Trash");
+    expect(html).toContain(">Arsip<");
+    expect(html).toContain(">Trash<");
     expect(html).toContain('href="/studio/dokumen"');
     expect(html).toContain('href="/studio/dokumen/trash"');
     expect(html).toContain('id="studio-sidebar"');

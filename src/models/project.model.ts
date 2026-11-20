@@ -2,22 +2,28 @@ import { randomUUID } from "crypto";
 import type { Database } from "bun:sqlite";
 import { slugify } from "../lib/slug";
 
+/** Status dokumen — satu-satunya penentu tampil/tidaknya dokumen. */
+export type Status = "published" | "archived" | "trashed";
+
 export type Project = {
   id: string;
   nama: string;
   slug: string;
   pdf_path: string;
   kategori: string;
+  status: Status;
   views: number;
   uploader_id: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
   deleted_at: string | null;
 };
 
 export type ProjectSummary = Pick<
   Project,
-  "id" | "nama" | "slug" | "pdf_path" | "kategori" | "views" | "uploader_id" | "created_at" | "updated_at" | "deleted_at"
+  | "id" | "nama" | "slug" | "pdf_path" | "kategori" | "status" | "views" | "uploader_id"
+  | "created_at" | "updated_at" | "archived_at" | "deleted_at"
 > & {
   /** Nama tampilan uploader (full_name atau username). NULL kalau data lama. */
   uploader: string | null;
@@ -26,9 +32,12 @@ export type ProjectSummary = Pick<
 /** Urutan rak buku: 'latest' = terbaru, 'popular' = paling banyak dibaca. */
 export type ShelfSort = "latest" | "popular";
 
+/** Urutan di studio: tambah 'oldest' & 'trashed'. */
+export type SortKey = ShelfSort | "oldest" | "trashed";
+
 const SHELF_SELECT = `
-  SELECT p.id, p.nama, p.slug, p.pdf_path, p.kategori, p.views, p.uploader_id,
-         p.created_at, p.updated_at, p.deleted_at,
+  SELECT p.id, p.nama, p.slug, p.pdf_path, p.kategori, p.status, p.views, p.uploader_id,
+         p.created_at, p.updated_at, p.archived_at, p.deleted_at,
          COALESCE(u.full_name, u.username) AS uploader
   FROM projects p
   LEFT JOIN users u ON u.id = p.uploader_id
@@ -38,31 +47,49 @@ const SHELF_SELECT = `
 export class ProjectModel {
   constructor(private db: Database) {}
 
-  /** List dokumen aktif (belum di-trash), terbaru dulu. */
+  /** List dokumen terbit (default), terbaru dulu. */
   list(): ProjectSummary[] {
-    return this.db
-      .query(`${SHELF_SELECT} WHERE p.deleted_at IS NULL ORDER BY p.updated_at DESC`)
-      .all() as ProjectSummary[];
+    return this.search({ status: "published" });
   }
 
-  /** Ringkasan untuk dashboard studio: total aktif, total views, isi trash. */
-  stats(): { total: number; views: number; trash: number } {
-    const aktif = this.db
+  /** List dokumen terbit milik satu user (dipakai kontributor). */
+  listByUploader(uploaderId: string): ProjectSummary[] {
+    return this.search({ status: "published", uploaderId });
+  }
+
+  /**
+   * Ringkasan untuk dashboard studio, dihitung per status.
+   * uploaderId opsional — kontributor hanya melihat angkanya sendiri.
+   */
+  stats(uploaderId?: string | null): {
+    published: number;
+    archived: number;
+    trashed: number;
+    views: number;
+  } {
+    const scope = uploaderId ? " AND uploader_id = ?" : "";
+    const params = uploaderId ? [uploaderId] : [];
+    const rows = this.db
+      .query(`SELECT status, COUNT(*) AS c FROM projects WHERE 1=1${scope} GROUP BY status`)
+      .all(...params) as { status: Status; c: number }[];
+    const byStatus = { published: 0, archived: 0, trashed: 0 } as Record<Status, number>;
+    for (const r of rows) byStatus[r.status] = r.c;
+    const views = this.db
       .query(
-        "SELECT COUNT(*) AS total, COALESCE(SUM(views), 0) AS views FROM projects WHERE deleted_at IS NULL"
+        `SELECT COALESCE(SUM(views), 0) AS v FROM projects WHERE status = 'published'${scope}`
       )
-      .get() as { total: number; views: number };
-    const trash = this.db
-      .query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NOT NULL")
-      .get() as { c: number };
-    return { total: aktif.total, views: aktif.views, trash: trash.c };
+      .get(...params) as { v: number };
+    return {
+      published: byStatus.published ?? 0,
+      archived: byStatus.archived ?? 0,
+      trashed: byStatus.trashed ?? 0,
+      views: views.v,
+    };
   }
 
-  /** Dokumen aktif terbaru, dibatasi limit (untuk dashboard). */
-  recent(limit = 5): ProjectSummary[] {
-    return this.db
-      .query(`${SHELF_SELECT} WHERE p.deleted_at IS NULL ORDER BY p.updated_at DESC LIMIT ?`)
-      .all(limit) as ProjectSummary[];
+  /** Dokumen terbaru, dibatasi limit (untuk dashboard). */
+  recent(limit = 5, uploaderId?: string | null): ProjectSummary[] {
+    return this.search({ status: "published", uploaderId, limit });
   }
 
   /** List dokumen untuk rak: sort 'latest' (terbaru) atau 'popular' (paling dibaca). */
@@ -76,17 +103,30 @@ export class ProjectModel {
    * q: kata kunci pada nama dokumen / nama uploader.
    */
   search(
-    opts: { sort?: ShelfSort | "oldest"; q?: string; limit?: number } = {}
+    opts: {
+      sort?: SortKey;
+      q?: string;
+      status?: Status;
+      uploaderId?: string | null;
+      limit?: number;
+    } = {}
   ): ProjectSummary[] {
     const sort = opts.sort ?? "latest";
+    // Default 'published' (fail-closed): query publik tidak boleh bocor arsip/trash.
+    const status = opts.status ?? "published";
     const q = (opts.q ?? "").trim();
 
     let orderBy = "p.updated_at DESC";
     if (sort === "popular") orderBy = "p.views DESC, p.updated_at DESC";
     else if (sort === "oldest") orderBy = "p.created_at ASC";
+    else if (sort === "trashed") orderBy = "p.deleted_at DESC";
 
-    let where = "p.deleted_at IS NULL";
-    const params: (string | number)[] = [];
+    let where = "p.status = ?";
+    const params: (string | number)[] = [status];
+    if (opts.uploaderId) {
+      where += " AND p.uploader_id = ?";
+      params.push(opts.uploaderId);
+    }
     if (q) {
       where += " AND (p.nama LIKE ? OR COALESCE(u.full_name, u.username) LIKE ?)";
       const like = `%${q}%`;
@@ -101,13 +141,9 @@ export class ProjectModel {
     return this.db.query(sql).all(...params) as ProjectSummary[];
   }
 
-  /** List dokumen di trash (deleted_at terisi), terbaru di-trash dulu. */
-  listTrashed(): ProjectSummary[] {
-    return this.db
-      .query(
-        `${SHELF_SELECT} WHERE p.deleted_at IS NOT NULL ORDER BY p.deleted_at DESC`
-      )
-      .all() as ProjectSummary[];
+  /** List dokumen di trash, terbaru di-trash dulu. */
+  listTrashed(uploaderId?: string | null): ProjectSummary[] {
+    return this.search({ status: "trashed", uploaderId, sort: "trashed" });
   }
 
   /** Ambil satu dokumen lengkap (termasuk yang di-trash + nama uploader). */
@@ -155,20 +191,41 @@ export class ProjectModel {
     this.db.query("UPDATE projects SET views = views + 1 WHERE id = ?").run(id);
   }
 
-  /** Soft delete: tandai deleted_at, file tetap di disk. */
-  softDelete(id: string) {
+  /**
+   * Arsipkan: sembunyikan dari publik tanpa menghapus.
+   * archived_at disimpan sebagai jejak waktu (dipakai juga saat restore).
+   */
+  archive(id: string) {
     this.db
       .query(
-        "UPDATE projects SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND deleted_at IS NULL"
+        "UPDATE projects SET status = 'archived', archived_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'published'"
       )
       .run(id);
   }
 
-  /** Restore dari trash: kosongkan deleted_at. */
+  /** Terbitkan lagi dari arsip. */
+  publish(id: string) {
+    this.db
+      .query(
+        "UPDATE projects SET status = 'published', archived_at = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'archived'"
+      )
+      .run(id);
+  }
+
+  /** Soft delete (masuk trash). archived_at DIBIARKAN agar restore tahu tujuan. */
+  softDelete(id: string) {
+    this.db
+      .query(
+        "UPDATE projects SET status = 'trashed', deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status != 'trashed'"
+      )
+      .run(id);
+  }
+
+  /** Restore dari trash → kembali ke 'archived' bila sebelumnya diarsipkan. */
   restore(id: string) {
     this.db
       .query(
-        "UPDATE projects SET deleted_at = NULL, updated_at = datetime('now') WHERE id = ? AND deleted_at IS NOT NULL"
+        "UPDATE projects SET status = CASE WHEN archived_at IS NOT NULL THEN 'archived' ELSE 'published' END, deleted_at = NULL, updated_at = datetime('now') WHERE id = ? AND status = 'trashed'"
       )
       .run(id);
   }
