@@ -385,4 +385,23 @@ describe("Akun — manajemen user (admin)", () => {
     const aksi = baris.slice(iAksi);
     expect(aksi).not.toContain("rounded-full bg-slate-100 text-slate-600");
   });
+
+  test("tab Trash tidak menawarkan upload PDF", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+
+    for (const url of ["/studio/dokumen?status=trashed", "/studio/postingan?status=trashed"]) {
+      const html = await (await app.request(url, { headers: { cookie } })).text();
+      // Tidak ada pemicu modal upload di halaman trash (modal global tetap dimuat)
+      expect(html).not.toContain("document.getElementById('upload-modal').showModal()");
+      expect(html).toContain("Trash kosong");
+    }
+
+    // Tab Terbit & Arsip tetap punya tombol upload
+    const terbit = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    expect(terbit).toContain("document.getElementById('upload-modal').showModal()");
+
+    const arsip = await (await app.request("/studio/dokumen?status=archived", { headers: { cookie } })).text();
+    expect(arsip).toContain("document.getElementById('upload-modal').showModal()");
+  });
 });
