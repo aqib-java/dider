@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+    # 'edited' ikut dipicu supaya mengganti base branch sebuah PR
+    # (mis. dari branch bertumpuk ke master) langsung menjalankan CI.
+    types: [opened, synchronize, reopened, edited]
 
 jobs:
   test:
