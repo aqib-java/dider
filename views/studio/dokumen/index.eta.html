@@ -158,14 +158,31 @@
                 </p>
               <% } else { %>
                 <% const terpilih = it.labelMap.get(d.id) || new Set(); %>
-                <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  <% it.semuaLabel.forEach(function (l) { %>
-                    <label class="flex items-center gap-2.5 text-sm cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50">
-                      <input type="checkbox" name="label" value="<%= l.id %>" <%= terpilih.has(l.id) ? "checked" : "" %>
-                        class="w-4 h-4 rounded border-slate-300 text-navy-900 focus:ring-gold-500" />
-                      <span><%= l.nama %></span>
-                    </label>
-                  <% }) %>
+                <!-- Multi-pilih label: bisa dicari, label terpilih tampil sebagai chip. -->
+                <div data-label-picker>
+                  <div class="relative">
+                    <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="search" data-label-search placeholder="Cari label…" autocomplete="off"
+                      class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+                  </div>
+
+                  <div data-label-chips class="flex flex-wrap gap-1.5 mt-2 empty:hidden"></div>
+
+                  <div data-label-list class="space-y-1 mt-2 max-h-52 overflow-y-auto pr-1">
+                    <% it.semuaLabel.forEach(function (l) { %>
+                      <label data-label-item data-nama="<%= l.nama.toLowerCase() %>"
+                        class="flex items-center gap-2.5 text-sm cursor-pointer rounded-lg px-2 py-1.5 hover:bg-slate-50">
+                        <input type="checkbox" name="label" value="<%= l.id %>" <%= terpilih.has(l.id) ? "checked" : "" %>
+                          class="peer sr-only" />
+                        <span class="w-4 h-4 shrink-0 rounded border border-slate-300 grid place-items-center text-transparent peer-checked:bg-navy-900 peer-checked:border-navy-900 peer-checked:text-white">
+                          <i class="bx bx-check text-[13px]"></i>
+                        </span>
+                        <span class="peer-checked:font-semibold peer-checked:text-navy-900"><%= l.nama %></span>
+                      </label>
+                    <% }) %>
+                  </div>
+
+                  <p data-label-empty class="hidden text-sm text-slate-500 mt-2">Label tidak ditemukan.</p>
                 </div>
                 <button type="submit"
                   class="w-full bg-navy-900 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-navy-800">Simpan Label</button>
@@ -194,3 +211,56 @@
 <% } %>
 
 <%~ include("/partials/pagination", { pagination: it.pagination, baseUrl: it.basePath, params: it.params }) %>
+
+<script>
+  // Pencarian & chip label di dialog "Label dokumen".
+  // Checkbox tetap jadi sumber data (name="label"), jadi server tidak berubah.
+  document.querySelectorAll("[data-label-picker]").forEach(function (picker) {
+    const search = picker.querySelector("[data-label-search]");
+    const chips = picker.querySelector("[data-label-chips]");
+    const empty = picker.querySelector("[data-label-empty]");
+    const items = Array.prototype.slice.call(picker.querySelectorAll("[data-label-item]"));
+
+    function renderChips() {
+      chips.innerHTML = "";
+      items.forEach(function (item) {
+        const cb = item.querySelector("input[type=checkbox]");
+        if (!cb.checked) return;
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "inline-flex items-center gap-1 bg-navy-900 text-white text-[11px] font-semibold pl-2.5 pr-1 py-1 rounded-full";
+        chip.title = "Lepas label " + item.dataset.nama;
+        chip.innerHTML = '<span>' + item.dataset.nama + "</span><i class=\"bx bx-x text-sm leading-none\"></i>";
+        chip.addEventListener("click", function () {
+          cb.checked = false;
+          renderChips();
+        });
+        chips.appendChild(chip);
+      });
+    }
+
+    function applyFilter() {
+      const q = (search.value || "").trim().toLowerCase();
+      let tampil = 0;
+      items.forEach(function (item) {
+        const cocok = !q || item.dataset.nama.indexOf(q) !== -1;
+        item.classList.toggle("hidden", !cocok);
+        if (cocok) tampil++;
+      });
+      empty.classList.toggle("hidden", tampil > 0);
+    }
+
+    search.addEventListener("input", applyFilter);
+    search.addEventListener("keydown", function (e) {
+      // Enter di kolom cari jangan men-submit form label.
+      if (e.key === "Enter") e.preventDefault();
+    });
+
+    picker.addEventListener("change", function (e) {
+      if (e.target && e.target.matches("input[type=checkbox]")) renderChips();
+    });
+
+    renderChips();
+    applyFilter();
+  });
+</script>
