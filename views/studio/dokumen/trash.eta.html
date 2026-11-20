@@ -4,7 +4,7 @@
 
 <div class="flex items-center justify-between gap-4 mb-5">
   <p class="text-sm text-slate-500"><%= it.dokumen.length %> dokumen di trash</p>
-  <a href="/studio/dokumen" class="text-sm text-navy-700 hover:underline">← Kembali ke dokumen</a>
+  <a href="/studio/dokumen" class="text-sm text-navy-700 hover:text-navy-900">← Kembali ke dokumen</a>
 </div>
 
 <% if (it.dokumen.length === 0) { %>
@@ -26,12 +26,16 @@
         </div>
         <div class="flex items-center gap-5 shrink-0">
           <form method="post" action="/studio/dokumen/<%= d.id %>/restore" class="inline">
-            <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-undo"></i> Pulihkan</button>
+            <button type="submit" class="text-emerald-600 hover:text-emerald-700 text-sm cursor-pointer"><i class="bx bx-undo"></i> Pulihkan</button>
           </form>
-          <form method="post" action="/studio/dokumen/<%= d.id %>/hard-delete" class="inline"
-            onsubmit="return confirm('Hapus permanen dokumen ini?')">
-            <button type="submit" class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
-          </form>
+          <button type="button" onclick="document.getElementById('hard-<%= d.id %>').showModal()"
+            class="text-red-600 hover:text-red-700 text-sm cursor-pointer"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
+          <%~ include("/partials/confirm-dialog", {
+            id: "hard-" + d.id,
+            judul: "Hapus permanen?",
+            pesan: "\"" + d.nama + "\" akan dihapus beserta file PDF-nya. Tindakan ini tidak bisa dibatalkan.",
+            action: "/studio/dokumen/" + d.id + "/hard-delete"
+          }) %>
         </div>
       </div>
     <% }) %>

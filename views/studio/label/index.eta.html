@@ -20,7 +20,7 @@
           </div>
           <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-navy-800">Cari</button>
           <% if (it.q) { %>
-            <a href="/studio/label" class="text-sm text-slate-500 hover:text-red-600"><i class="bx bx-x-circle"></i></a>
+            <a href="/studio/label" class="text-sm text-slate-500 hover:text-red-600 cursor-pointer"><i class="bx bx-x-circle"></i></a>
           <% } %>
         </form>
       </div>
@@ -42,10 +42,15 @@
                 <%= l.jumlah %> dokumen terbit · /jelajah?label=<%= l.slug %>
               </p>
             </div>
-            <form method="post" action="/studio/label/<%= l.id %>/delete" class="shrink-0"
-              onsubmit="return confirm('Hapus label <%= l.nama %>? Label akan dilepas dari semua dokumen.')">
-              <button type="submit" class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus</button>
-            </form>
+            <button type="button" onclick="document.getElementById('hapus-label-<%= l.id %>').showModal()"
+              class="shrink-0 text-red-600 hover:text-red-700 text-sm cursor-pointer"><i class="bx bx-trash-alt"></i> Hapus</button>
+            <%~ include("/partials/confirm-dialog", {
+              id: "hapus-label-" + l.id,
+              judul: "Hapus label?",
+              pesan: "Label \"" + l.nama + "\" akan dilepas dari semua dokumen. Dokumennya sendiri tetap utuh.",
+              action: "/studio/label/" + l.id + "/delete",
+              label: "Hapus Label"
+            }) %>
           </li>
         <% }) %>
       </ul>

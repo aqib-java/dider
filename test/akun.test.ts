@@ -245,4 +245,73 @@ describe("Akun — manajemen user (admin)", () => {
     expect(dash).not.toContain("Buka Halaman Publik");
     expect(dash).toContain("Ringkasan");
   });
+
+  test("aksi baris dokumen: tanpa underline, kursor tangan", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+
+    const form = new FormData();
+    form.append("nama", "Dokumen Aksi");
+    form.append("pdf", new File(["%PDF-1.4\n%%EOF"], "a.pdf", { type: "application/pdf" }));
+    await app.request("/studio/dokumen", {
+      method: "POST",
+      headers: { cookie, origin: "http://localhost:3000" },
+      body: form,
+    });
+
+    const html = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    const id = html.split('data-doc-id="')[1].slice(0, 36);
+    const baris = html.split('data-doc-id="').find((r) => r.startsWith(id))!;
+
+    // Tombol aksi tidak lagi memakai underline saat hover, dan menandakan bisa diklik
+    expect(baris).not.toContain("hover:underline");
+    expect(baris).toContain("cursor-pointer");
+
+    // Hapus permanen (tab Trash) memakai dialog konfirmasi, bukan confirm() browser
+    await post(app, `/studio/dokumen/${id}/delete`, cookie, { mode: "soft" });
+    const trash = await (
+      await app.request("/studio/dokumen?status=trashed", { headers: { cookie } })
+    ).text();
+    const barisTrash = trash.split('data-doc-id="').find((r) => r.startsWith(id))!;
+    expect(barisTrash).toContain(`id="hard-${id}"`);
+    expect(barisTrash).toContain(`action="/studio/dokumen/${id}/hard-delete"`);
+    expect(barisTrash).toContain("m-auto rounded-2xl p-0 backdrop:bg-navy-950/60");
+    expect(barisTrash).toContain(">Batal<");
+    expect(barisTrash).not.toContain("hover:underline");
+
+    await post(app, `/studio/dokumen/${id}/hard-delete`, cookie);
+  });
+
+  test("tidak ada lagi confirm() bawaan browser untuk aksi hapus", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+    await post(app, "/studio/label", cookie, { nama: "Label Modal Uji" });
+
+    const dokumen = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    const label = await (await app.request("/studio/label", { headers: { cookie } })).text();
+    const dashboard = await (await app.request("/studio", { headers: { cookie } })).text();
+
+    for (const html of [dokumen, label, dashboard]) {
+      expect(html).not.toContain("return confirm(");
+    }
+    // Gaya modal seragam dengan dialog di halaman dokumen
+    expect(label).toContain('class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60');
+    expect(label).toContain(">Batal<");
+  });
+
+  test("hapus label memakai modal, bukan tombol langsung", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+    await post(app, "/studio/label", cookie, { nama: "Label Uji Modal" });
+
+    const html = await (await app.request("/studio/label", { headers: { cookie } })).text();
+    const idLabel = html.split('data-label-id="')[1].slice(0, 36);
+
+    expect(html).toContain(`id="hapus-label-${idLabel}"`);
+    expect(html).toContain(`action="/studio/label/${idLabel}/delete"`);
+    expect(html).toContain("Hapus label?");
+    expect(html).toContain("Hapus Label");
+    // Tidak ada tombol submit langsung di baris (harus lewat dialog)
+    expect(html).not.toContain(`action="/studio/label/${idLabel}/delete" class="shrink-0"`);
+  });
 });

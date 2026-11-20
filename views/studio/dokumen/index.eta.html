@@ -121,27 +121,31 @@
         <div class="flex items-center gap-4 shrink-0">
           <% if (d.status === "trashed") { %>
             <form method="post" action="/studio/dokumen/<%= d.id %>/restore" class="inline">
-              <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-undo"></i> Pulihkan</button>
+              <button type="submit" class="text-emerald-600 hover:text-emerald-700 text-sm cursor-pointer"><i class="bx bx-undo"></i> Pulihkan</button>
             </form>
-            <form method="post" action="/studio/dokumen/<%= d.id %>/hard-delete" class="inline"
-              onsubmit="return confirm('Hapus permanen dokumen ini?')">
-              <button type="submit" class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
-            </form>
+            <button type="button" onclick="document.getElementById('hard-<%= d.id %>').showModal()"
+              class="text-red-600 hover:text-red-700 text-sm cursor-pointer"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
+            <%~ include("/partials/confirm-dialog", {
+              id: "hard-" + d.id,
+              judul: "Hapus permanen?",
+              pesan: "\"" + d.nama + "\" akan dihapus beserta file PDF-nya. Tindakan ini tidak bisa dibatalkan.",
+              action: "/studio/dokumen/" + d.id + "/hard-delete"
+            }) %>
           <% } else if (d.status === "published") { %>
             <a href="/majalah/<%= d.slug %>" target="_blank" rel="noopener"
-              class="text-navy-700 hover:underline text-sm"><i class="bx bx-book-open"></i> Baca</a>
+              class="text-navy-700 hover:text-navy-900 text-sm"><i class="bx bx-book-open"></i> Baca</a>
             <form method="post" action="/studio/dokumen/<%= d.id %>/archive" class="inline">
-              <button type="submit" class="text-slate-600 hover:underline text-sm"><i class="bx bx-archive"></i> Arsipkan</button>
+              <button type="submit" class="text-slate-600 hover:text-navy-900 text-sm cursor-pointer"><i class="bx bx-archive"></i> Arsipkan</button>
             </form>
           <% } else { %>
             <form method="post" action="/studio/dokumen/<%= d.id %>/publish" class="inline">
-              <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-upload"></i> Terbitkan</button>
+              <button type="submit" class="text-emerald-600 hover:text-emerald-700 text-sm cursor-pointer"><i class="bx bx-upload"></i> Terbitkan</button>
             </form>
           <% } %>
           <button type="button" onclick="document.getElementById('label-<%= d.id %>').showModal()"
-            class="text-slate-600 hover:underline text-sm"><i class="bx bx-purchase-tag"></i> Label</button>
+            class="text-slate-600 hover:text-navy-900 text-sm cursor-pointer"><i class="bx bx-purchase-tag"></i> Label</button>
           <button type="button" onclick="document.getElementById('delete-<%= d.id %>').showModal()"
-            class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus</button>
+            class="text-red-600 hover:text-red-700 text-sm cursor-pointer"><i class="bx bx-trash-alt"></i> Hapus</button>
           <dialog id="label-<%= d.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-sm shadow-2xl">
             <form method="post" action="/studio/dokumen/<%= d.id %>/label" class="p-6 space-y-4">
               <div class="flex items-start justify-between gap-4">
@@ -154,7 +158,7 @@
               </div>
               <% if (it.semuaLabel.length === 0) { %>
                 <p class="text-sm text-slate-500">
-                  Belum ada label. <% if (it.isAdmin) { %><a href="/studio/label" class="text-navy-700 hover:underline">Buat label dulu</a>.<% } else { %>Minta admin CCIT membuat label.<% } %>
+                  Belum ada label. <% if (it.isAdmin) { %><a href="/studio/label" class="text-navy-700 hover:text-navy-900">Buat label dulu</a>.<% } else { %>Minta admin CCIT membuat label.<% } %>
                 </p>
               <% } else { %>
                 <% const terpilih = it.labelMap.get(d.id) || new Set(); %>

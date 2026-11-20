@@ -27,7 +27,7 @@
 
   <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-navy-800">Cari</button>
   <% if (it.q) { %>
-    <a href="/studio/akun<%= it.role === "all" ? "" : "?peran=" + it.role %>" class="text-sm text-slate-500 hover:text-red-600"><i class="bx bx-x-circle"></i> Hapus</a>
+    <a href="/studio/akun<%= it.role === "all" ? "" : "?peran=" + it.role %>" class="text-sm text-slate-500 hover:text-red-600 cursor-pointer"><i class="bx bx-x-circle"></i> Hapus</a>
   <% } %>
 
   <p class="text-sm text-slate-500 ml-auto">
@@ -63,7 +63,7 @@
 
         <form method="post" action="/studio/akun/<%= u.id %>/role" class="inline">
           <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'kontributor' : 'admin' %>" />
-          <button type="submit" class="text-sm text-navy-700 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+          <button type="submit" class="text-sm text-navy-700 hover:text-navy-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             <% if (u.id === it.diriSendiri && u.role === "admin") { %>disabled title="Tidak bisa menurunkan diri sendiri"<% } %>>
             <i class="bx bx-transfer"></i>
             <%= u.role === "admin" ? "Jadikan kontributor" : "Jadikan admin" %>
@@ -71,7 +71,7 @@
         </form>
 
         <button type="button" onclick="document.getElementById('pw-<%= u.id %>').showModal()"
-          class="text-sm text-slate-600 hover:underline"><i class="bx bx-key"></i> Reset password</button>
+          class="text-sm text-slate-600 hover:text-navy-900 cursor-pointer"><i class="bx bx-key"></i> Reset password</button>
 
         <dialog id="pw-<%= u.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-xs shadow-2xl">
           <form method="post" action="/studio/akun/<%= u.id %>/password" class="p-6 space-y-4">
