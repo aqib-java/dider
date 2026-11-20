@@ -126,24 +126,59 @@ describe("Akun — manajemen user (admin)", () => {
     expect(baris).toContain("Admin CCIT");
   });
 
-  test("reset password: password lama gagal, password baru berhasil", async () => {
+  test("reset password: perlu konfirmasi & minimal 6 karakter", async () => {
     const app = createTestApp();
     const adminCookie = await registerUser(app, "adminccit");
     await registerUser(app, "mahasiswa");
     const id = await userId(app, adminCookie, "mahasiswa");
 
-    // Password terlalu pendek ditolak
-    await post(app, `/studio/akun/${id}/password`, adminCookie, { password: "123" });
+    const loginDengan = async (password: string) =>
+      app.request("/studio/login", {
+        method: "POST",
+        headers: formPostHeaders,
+        body: new URLSearchParams({ username: "mahasiswa", password }).toString(),
+      });
 
-    const res = await post(app, `/studio/akun/${id}/password`, adminCookie, { password: "barubaru123" });
+    // 1) Terlalu pendek ditolak
+    const pendek = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "12345",
+      password_confirm: "12345",
+    });
+    let page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(pendek)}` },
+    });
+    expect(await page.text()).toContain("minimal 6 karakter");
+    expect((await loginDengan("12345")).status).toBe(200); // belum berubah
+
+    // 2) Konfirmasi tidak sama ditolak
+    const beda = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+      password_confirm: "barubaru124",
+    });
+    page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(beda)}` },
+    });
+    expect(await page.text()).toContain("Konfirmasi password tidak sama");
+    expect((await loginDengan("barubaru123")).status).toBe(200); // belum berubah
+
+    // 3) Tanpa kolom konfirmasi juga ditolak (guard server, bukan cuma klien)
+    const tanpaKonfirmasi = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+    });
+    page = await app.request("/studio/akun", {
+      headers: { cookie: `${adminCookie.split(";")[0]}; ${cookieFrom(tanpaKonfirmasi)}` },
+    });
+    expect(await page.text()).toContain("Konfirmasi password tidak sama");
+
+    // 4) Pasangan yang valid berhasil
+    const res = await post(app, `/studio/akun/${id}/password`, adminCookie, {
+      password: "barubaru123",
+      password_confirm: "barubaru123",
+    });
     expect(res.status).toBe(302);
 
     // Login dengan password baru
-    const loginBaru = await app.request("/studio/login", {
-      method: "POST",
-      headers: formPostHeaders,
-      body: new URLSearchParams({ username: "mahasiswa", password: "barubaru123" }).toString(),
-    });
+    const loginBaru = await loginDengan("barubaru123");
     expect(loginBaru.status).toBe(302);
     expect(loginBaru.headers.get("location")).toBe("/studio");
 
@@ -155,6 +190,22 @@ describe("Akun — manajemen user (admin)", () => {
     });
     expect(loginLama.status).toBe(200);
     expect(await loginLama.text()).toContain("Username atau password salah");
+  });
+
+  test("dialog reset password punya kolom konfirmasi & aturan minimal 6 karakter", async () => {
+    const app = createTestApp();
+    const adminCookie = await registerUser(app, "adminccit");
+    await registerUser(app, "mahasiswa");
+
+    const html = await (await app.request("/studio/akun", { headers: { cookie: adminCookie } })).text();
+
+    expect(html).toContain('name="password_confirm"');
+    expect(html).toContain('placeholder="Ulangi password baru"');
+    expect(html).toContain('placeholder="Minimal 6 karakter"');
+    expect(html).toContain("Konfirmasi password baru");
+    expect(html).toContain("data-pw-error");
+    // Aturan 6 karakter ditegakkan di klien (minlength) dan server
+    expect(html).toContain('minlength="6"');
   });
 
   test("kontributor tidak bisa mengubah peran atau mereset password", async () => {
