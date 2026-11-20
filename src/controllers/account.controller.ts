@@ -4,6 +4,7 @@ import type { Db } from "../db";
 import { UserModel, type PublicUser, type Role } from "../models/user.model";
 import { requireAdmin } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
+import { buildPagination, pageOffset } from "../lib/pagination";
 
 function currentUser(c: Context): PublicUser | null {
   return (c.get("user" as never) as PublicUser | null) ?? null;
@@ -20,13 +21,31 @@ export function accountController(db: Db) {
 
   const users = new UserModel(db.sqlite);
 
-  // GET /studio/akun — daftar akun + jumlah dokumen
-  app.get("/akun", requireAdmin(db), (c) =>
-    view(c, "studio/akun/index", {
-      daftar: users.list(),
+  // GET /studio/akun — daftar akun + jumlah dokumen (search, filter peran, pagination)
+  app.get("/akun", requireAdmin(db), (c) => {
+    const q = (c.req.query("q") ?? "").trim();
+    const rawPeran = c.req.query("peran");
+    const role: Role | "all" =
+      rawPeran === "admin" || rawPeran === "kontributor" ? rawPeran : "all";
+
+    const filter = { q, role };
+    const pagination = buildPagination({
+      pageRaw: c.req.query("page"),
+      perRaw: c.req.query("per"),
+      total: users.count(filter),
+      baseUrl: "/studio/akun",
+      params: { q, peran: role === "all" ? undefined : role },
+    });
+
+    return view(c, "studio/akun/index", {
+      daftar: users.list({ ...filter, limit: pagination.per, offset: pageOffset(pagination) }),
       diriSendiri: currentUser(c)?.id ?? null,
-    })
-  );
+      pagination,
+      q,
+      role,
+      ringkasan: users.countByRole(),
+    });
+  });
 
   // POST /studio/akun/:id/role — ubah peran
   app.post("/akun/:id/role", requireAdmin(db), async (c) => {

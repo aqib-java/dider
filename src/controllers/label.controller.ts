@@ -6,6 +6,7 @@ import { ProjectModel } from "../models/project.model";
 import type { PublicUser } from "../models/user.model";
 import { requireAuth, requireAdmin } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
+import { buildPagination, pageOffset } from "../lib/pagination";
 
 function currentUser(c: Context): PublicUser | null {
   return (c.get("user" as never) as PublicUser | null) ?? null;
@@ -23,10 +24,27 @@ export function labelController(db: Db) {
   const labels = new LabelModel(db.sqlite);
   const projects = new ProjectModel(db.sqlite);
 
-  // GET /studio/label — daftar label + form tambah (khusus admin)
-  app.get("/label", requireAdmin(db), (c) =>
-    view(c, "studio/label/index", { daftar: labels.listWithCount() })
-  );
+  // GET /studio/label — daftar label + form tambah (khusus admin, dengan pagination)
+  app.get("/label", requireAdmin(db), (c) => {
+    const q = (c.req.query("q") ?? "").trim();
+    const pagination = buildPagination({
+      pageRaw: c.req.query("page"),
+      perRaw: c.req.query("per"),
+      total: labels.count({ q }),
+      baseUrl: "/studio/label",
+      params: { q },
+    });
+
+    return view(c, "studio/label/index", {
+      daftar: labels.listWithCount({
+        q,
+        limit: pagination.per,
+        offset: pageOffset(pagination),
+      }),
+      pagination,
+      q,
+    });
+  });
 
   // POST /studio/label — tambah label
   app.post("/label", requireAdmin(db), async (c) => {

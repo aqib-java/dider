@@ -34,14 +34,33 @@
 </div>
 
 <div class="flex flex-wrap items-center gap-2 mb-4">
-  <p class="text-sm text-slate-500">
+  <form method="get" action="<%= it.basePath %>" class="flex items-center gap-2 min-w-0">
+    <% if (it.status !== "published") { %>
+      <input type="hidden" name="status" value="<%= it.status %>" />
+    <% } %>
+    <% if (it.labelAktif) { %>
+      <input type="hidden" name="label" value="<%= it.labelAktif %>" />
+    <% } %>
+    <div class="relative">
+      <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+      <input type="search" name="q" value="<%= it.q %>"
+        placeholder="<%= semua ? 'Cari judul atau pengunggah…' : 'Cari judul dokumen…' %>"
+        class="w-64 max-w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500" />
+    </div>
+    <button type="submit" class="bg-navy-900 text-white text-sm font-semibold px-3 py-2 rounded-lg hover:bg-navy-800">Cari</button>
+    <% if (it.q) { %>
+      <a href="<%= it.status === "published" ? it.basePath : it.basePath + "?status=" + it.status %><%= it.labelAktif ? (it.status === "published" ? "?" : "&") + "label=" + it.labelAktif : "" %>"
+        class="text-sm text-slate-500 hover:text-red-600"><i class="bx bx-x-circle"></i> Hapus</a>
+    <% } %>
+  </form>
+  <p class="text-sm text-slate-500 ml-auto">
     <% if (semua) { %>Semua akun<% } else { %>Milik saya<% } %> ·
-    <%= it.dokumen.length %>
+    <%= it.pagination.total %>
     <%= it.status === "archived" ? "diarsipkan" : it.status === "trashed" ? "di trash" : "terbit" %>
   </p>
   <% if (it.semuaLabel.length > 0) { %>
     <div class="flex flex-wrap items-center gap-1.5 ml-auto">
-      <% const dasar = it.status === "published" ? it.basePath : it.basePath + "?status=" + it.status; %>
+      <% const dasar = (it.status === "published" ? it.basePath : it.basePath + "?status=" + it.status) + (it.q ? (it.status === "published" ? "?" : "&") + "q=" + encodeURIComponent(it.q) : ""); %>
       <a href="<%= dasar %>"
         class="text-xs font-semibold px-2.5 py-1 rounded-full <%= it.labelAktif === "" ? "bg-navy-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200" %>">Semua label</a>
       <% it.semuaLabel.forEach(function (l) { %>
@@ -174,4 +193,4 @@
   </div>
 <% } %>
 
-
+<%~ include("/partials/pagination", { pagination: it.pagination, baseUrl: it.basePath, params: it.params }) %>
