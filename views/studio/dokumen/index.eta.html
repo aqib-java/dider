@@ -1,6 +1,10 @@
 <% layout("/layouts/studio") %>
-<% it.title = it.status === "archived" ? "Arsip — Dider" : "Dokumen — Dider" %>
-<% it.pageTitle = it.status === "archived" ? "Arsip" : "Dokumen" %>
+<%
+  const semua = it.mode === "all";
+  const judulHalaman = semua ? "Semua Postingan" : "Dokumen Saya";
+  it.title = judulHalaman + " — Dider Studio";
+  it.pageTitle = judulHalaman;
+%>
 
 <%
   const tab = (key, label, jumlah, href) => {
@@ -11,8 +15,9 @@
     return { label, jumlah, href, cls };
   };
   const tabs = [
-    tab("published", "Terbit", it.stats.published, "/studio/dokumen"),
-    tab("archived", "Arsip", it.stats.archived, "/studio/dokumen?status=archived"),
+    tab("published", "Terbit", it.stats.published, it.basePath),
+    tab("archived", "Arsip", it.stats.archived, it.basePath + "?status=archived"),
+    tab("trashed", "Trash", it.stats.trashed, it.basePath + "?status=trashed"),
   ];
 %>
 
@@ -23,10 +28,6 @@
         <%= t.label %> <span class="opacity-70">(<%= t.jumlah %>)</span>
       </a>
     <% }) %>
-    <a href="/studio/dokumen/trash"
-      class="px-4 py-2 rounded-lg text-slate-600 hover:text-navy-900">
-      Trash <span class="opacity-70">(<%= it.stats.trashed %>)</span>
-    </a>
   </div>
   <button type="button" onclick="document.getElementById('upload-modal').showModal()"
     class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600"><i class="bx bx-plus"></i> Upload</button>
@@ -34,11 +35,13 @@
 
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <p class="text-sm text-slate-500">
-    <%= it.scopeLabel %> · <%= it.dokumen.length %> <%= it.status === "archived" ? "diarsipkan" : "terbit" %>
+    <% if (semua) { %>Semua akun<% } else { %>Milik saya<% } %> ·
+    <%= it.dokumen.length %>
+    <%= it.status === "archived" ? "diarsipkan" : it.status === "trashed" ? "di trash" : "terbit" %>
   </p>
   <% if (it.semuaLabel.length > 0) { %>
     <div class="flex flex-wrap items-center gap-1.5 ml-auto">
-      <% const dasar = it.status === "archived" ? "/studio/dokumen?status=archived" : "/studio/dokumen"; %>
+      <% const dasar = it.status === "published" ? it.basePath : it.basePath + "?status=" + it.status; %>
       <a href="<%= dasar %>"
         class="text-xs font-semibold px-2.5 py-1 rounded-full <%= it.labelAktif === "" ? "bg-navy-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200" %>">Semua label</a>
       <% it.semuaLabel.forEach(function (l) { %>
@@ -51,14 +54,20 @@
 
 <% if (it.dokumen.length === 0) { %>
   <div class="bg-white border border-dashed border-slate-300 rounded-xl px-6 py-16 text-center">
-    <i class="bx <%= it.status === 'archived' ? 'bx-archive' : 'bx-file-blank' %> text-5xl text-slate-300"></i>
+    <i class="bx <%= it.status === 'archived' ? 'bx-archive' : it.status === 'trashed' ? 'bx-trash' : 'bx-file-blank' %> text-5xl text-slate-300"></i>
     <p class="font-semibold text-navy-900 mt-3 mb-1">
-      <%= it.status === "archived" ? "Belum ada dokumen diarsipkan" : "Belum ada dokumen terbit" %>
+      <%= it.status === "archived"
+        ? "Belum ada dokumen diarsipkan"
+        : it.status === "trashed"
+          ? "Trash kosong"
+          : semua ? "Belum ada dokumen terbit" : "Belum ada dokumen terbit" %>
     </p>
     <p class="text-sm text-slate-500 mb-5">
       <%= it.status === "archived"
         ? "Dokumen yang diarsipkan disembunyikan dari publik, tapi file & datanya tetap tersimpan."
-        : "Upload PDF pertama kamu!" %>
+        : it.status === "trashed"
+          ? "Dokumen yang dihapus akan muncul di sini dan masih bisa dipulihkan."
+          : semua ? "Belum ada akun yang mengunggah dokumen." : "Upload PDF pertama kamu!" %>
     </p>
     <% if (it.status !== "archived") { %>
       <button type="button" onclick="document.getElementById('upload-modal').showModal()"
@@ -78,7 +87,7 @@
           </p>
           <p class="text-xs text-slate-400 mt-0.5">
             <%= d.views %>× dibaca · Diperbarui <%= it.formatTanggal(d.updated_at) %>
-            <% if (it.isAdmin && d.uploader) { %> · oleh <%= d.uploader %><% } %>
+            <% if (semua && d.uploader) { %> · oleh <span class="font-semibold text-navy-700"><%= d.uploader %></span><% } %>
             <% if (d.status === "archived") { %> · Diarsipkan <%= it.formatTanggal(d.archived_at) %><% } %>
           </p>
           <% const labelDok = (d.labels || "").split("||").filter(Boolean); %>
@@ -91,7 +100,15 @@
           <% } %>
         </div>
         <div class="flex items-center gap-4 shrink-0">
-          <% if (d.status === "published") { %>
+          <% if (d.status === "trashed") { %>
+            <form method="post" action="/studio/dokumen/<%= d.id %>/restore" class="inline">
+              <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-undo"></i> Pulihkan</button>
+            </form>
+            <form method="post" action="/studio/dokumen/<%= d.id %>/hard-delete" class="inline"
+              onsubmit="return confirm('Hapus permanen dokumen ini?')">
+              <button type="submit" class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus Permanen</button>
+            </form>
+          <% } else if (d.status === "published") { %>
             <a href="/majalah/<%= d.slug %>" target="_blank" rel="noopener"
               class="text-navy-700 hover:underline text-sm"><i class="bx bx-book-open"></i> Baca</a>
             <form method="post" action="/studio/dokumen/<%= d.id %>/archive" class="inline">
@@ -157,8 +174,4 @@
   </div>
 <% } %>
 
-<div class="mt-5">
-  <a href="/studio/dokumen/trash" class="text-sm text-navy-700 hover:underline">
-    <i class="bx bx-trash"></i> Lihat Trash (<%= it.stats.trashed %>)
-  </a>
-</div>
+

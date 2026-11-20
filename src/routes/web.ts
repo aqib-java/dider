@@ -4,6 +4,7 @@ import { injectLocals } from "../middleware/locals.middleware";
 import { authController } from "../controllers/auth.controller";
 import { dashboardController } from "../controllers/dashboard.controller";
 import { labelController } from "../controllers/label.controller";
+import { accountController } from "../controllers/account.controller";
 import { pageController } from "../controllers/page.controller";
 import { projectController } from "../controllers/project.controller";
 
@@ -19,6 +20,7 @@ export function web(db: Db) {
   app.route("/studio", dashboardController(db)); // /studio (dashboard)
   app.route("/studio", projectController(db)); // /studio/dokumen, /studio/dokumen/trash
   app.route("/studio", labelController(db)); // /studio/label (admin) + tempel label dokumen
+  app.route("/studio", accountController(db)); // /studio/akun (admin)
 
   return app;
 }

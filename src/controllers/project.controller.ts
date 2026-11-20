@@ -6,7 +6,7 @@ import type { Db } from "../db";
 import { ProjectModel, type Status } from "../models/project.model";
 import { LabelModel } from "../models/label.model";
 import type { PublicUser } from "../models/user.model";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireAdmin } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
@@ -43,32 +43,43 @@ export function projectController(db: Db) {
   const projects = new ProjectModel(db.sqlite);
   const labels = new LabelModel(db.sqlite);
 
-  // GET /studio/dokumen — daftar dokumen milik sendiri (admin: semua) + tab status
-  app.get("/dokumen", requireAuth(db), (c) => {
+  /**
+   * Render daftar dokumen. Dipakai dua halaman berbeda:
+   * - /studio/dokumen   → dokumen MILIK SENDIRI (semua peran, termasuk admin)
+   * - /studio/postingan → SEMUA dokumen (khusus admin)
+   */
+  const renderDaftar = (c: Context, mode: "own" | "all") => {
     const user = currentUser(c);
-    const scope = isAdmin(user) ? null : (user?.id ?? "__none__");
+    const semua = mode === "all";
+    const scope = semua ? null : (user?.id ?? "__none__");
     const raw = c.req.query("status");
-    const status: Status = raw === "archived" ? "archived" : "published";
-
+    const status: Status =
+      raw === "archived" ? "archived" : raw === "trashed" ? "trashed" : "published";
     const labelSlug = c.req.query("label") || undefined;
+
     const dokumen = projects
       .search({ status, uploaderId: scope, labelSlug })
       .map((d) => ({ ...d, missing: !existsSync(d.pdf_path) }));
 
-    // Peta label per dokumen untuk dialog "atur label".
-    const labelMap = labels.idsForMany(dokumen.map((d) => d.id));
-
     return view(c, "studio/dokumen/index", {
+      mode,
+      basePath: semua ? "/studio/postingan" : "/studio/dokumen",
       dokumen,
       status,
       stats: projects.stats(scope),
       isAdmin: isAdmin(user),
-      scopeLabel: isAdmin(user) ? "Semua dokumen" : "Dokumen saya",
       semuaLabel: labels.listWithCount(),
-      labelMap,
+      // Peta label per dokumen untuk dialog "atur label".
+      labelMap: labels.idsForMany(dokumen.map((d) => d.id)),
       labelAktif: labelSlug ?? "",
     });
-  });
+  };
+
+  // GET /studio/dokumen — dokumen milik sendiri + tab status
+  app.get("/dokumen", requireAuth(db), (c) => renderDaftar(c, "own"));
+
+  // GET /studio/postingan — semua dokumen dari semua akun (khusus admin)
+  app.get("/postingan", requireAdmin(db), (c) => renderDaftar(c, "all"));
 
   // POST /studio/dokumen — upload PDF
   app.post("/dokumen", requireAuth(db), async (c) => {
