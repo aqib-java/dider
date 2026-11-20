@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { unlinkSync, existsSync } from "fs";
 import type { Db } from "../db";
 import { ProjectModel, type Status } from "../models/project.model";
+import { LabelModel } from "../models/label.model";
 import type { PublicUser } from "../models/user.model";
 import { requireAuth } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
@@ -40,6 +41,7 @@ export function projectController(db: Db) {
   }
 
   const projects = new ProjectModel(db.sqlite);
+  const labels = new LabelModel(db.sqlite);
 
   // GET /studio/dokumen — daftar dokumen milik sendiri (admin: semua) + tab status
   app.get("/dokumen", requireAuth(db), (c) => {
@@ -48,9 +50,13 @@ export function projectController(db: Db) {
     const raw = c.req.query("status");
     const status: Status = raw === "archived" ? "archived" : "published";
 
+    const labelSlug = c.req.query("label") || undefined;
     const dokumen = projects
-      .search({ status, uploaderId: scope })
+      .search({ status, uploaderId: scope, labelSlug })
       .map((d) => ({ ...d, missing: !existsSync(d.pdf_path) }));
+
+    // Peta label per dokumen untuk dialog "atur label".
+    const labelMap = labels.idsForMany(dokumen.map((d) => d.id));
 
     return view(c, "studio/dokumen/index", {
       dokumen,
@@ -58,6 +64,9 @@ export function projectController(db: Db) {
       stats: projects.stats(scope),
       isAdmin: isAdmin(user),
       scopeLabel: isAdmin(user) ? "Semua dokumen" : "Dokumen saya",
+      semuaLabel: labels.listWithCount(),
+      labelMap,
+      labelAktif: labelSlug ?? "",
     });
   });
 

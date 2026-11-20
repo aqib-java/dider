@@ -2,6 +2,8 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { Context, Next } from "hono";
 import type { Db } from "../db";
 import { SessionModel } from "../models/session.model";
+import { UserModel } from "../models/user.model";
+import { flashError } from "../view";
 
 function sessions(db: Db) {
   return new SessionModel(db.sqlite!);
@@ -48,6 +50,26 @@ export function redirectIfAuthenticated(db: Db) {
   return async (c: Context, next: Next) => {
     const userId = getUserId(c, db);
     if (userId) return c.redirect("/studio", 302);
+    await next();
+  };
+}
+
+/**
+ * Middleware: wajib login DAN berperan admin (internal CCIT).
+ * Guard dicek di server — menyembunyikan menu saja tidak cukup.
+ */
+export function requireAdmin(db: Db) {
+  return async (c: Context, next: Next) => {
+    const userId = getUserId(c, db);
+    if (!userId) return c.redirect("/studio/login", 302);
+
+    const user = db.sqlite ? new UserModel(db.sqlite).findPublic(userId) : null;
+    if (!user || user.role !== "admin") {
+      flashError(c, "Halaman ini hanya untuk admin CCIT.");
+      return c.redirect("/studio", 302);
+    }
+
+    c.set("userId", userId);
     await next();
   };
 }

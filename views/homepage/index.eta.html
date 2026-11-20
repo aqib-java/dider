@@ -115,6 +115,14 @@
         <p class="text-sm text-slate-500 mt-2">
           oleh <%= featured.uploader ?? "Anonim" %> · <%= it.formatTanggal(featured.created_at) %> · <%= featured.views %>× dibaca
         </p>
+        <% const labelFeatured = (featured.labels || "").split("||").filter(Boolean); %>
+        <% if (labelFeatured.length > 0) { %>
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <% labelFeatured.forEach(function (nama) { %>
+              <span class="bg-white border border-slate-200 text-navy-800 text-[11px] font-semibold px-2 py-0.5 rounded-full"><%= nama %></span>
+            <% }) %>
+          </div>
+        <% } %>
         <div class="mt-5">
           <a href="/majalah/<%= featured.slug %>"
             class="inline-flex items-center gap-2 bg-gold-500 text-navy-950 font-semibold px-5 py-2.5 rounded-xl hover:bg-gold-600">
