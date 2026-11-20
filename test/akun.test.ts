@@ -365,4 +365,24 @@ describe("Akun — manajemen user (admin)", () => {
     // Tidak ada tombol submit langsung di baris (harus lewat dialog)
     expect(html).not.toContain(`action="/studio/label/${idLabel}/delete" class="shrink-0"`);
   });
+
+  test("badge peran menempel di samping nama, bukan di baris tombol", async () => {
+    const app = createTestApp();
+    const adminCookie = await registerUser(app, "adminccit");
+    await registerUser(app, "mahasiswa");
+
+    const html = await (await app.request("/studio/akun", { headers: { cookie: adminCookie } })).text();
+    const baris = html.split('data-user-id="').find((r) => r.includes("@mahasiswa "))!;
+
+    // Badge muncul sebelum baris aksi (di blok nama)
+    const iBadge = baris.indexOf("Kontributor");
+    const iAksi = baris.indexOf("/role");
+    expect(iBadge).toBeGreaterThan(-1);
+    expect(iAksi).toBeGreaterThan(-1);
+    expect(iBadge).toBeLessThan(iAksi);
+
+    // Label aksi tidak lagi memuat span badge peran
+    const aksi = baris.slice(iAksi);
+    expect(aksi).not.toContain("rounded-full bg-slate-100 text-slate-600");
+  });
 });

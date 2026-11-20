@@ -44,23 +44,22 @@
           <%= u.username.charAt(0).toUpperCase() %>
         </span>
         <div class="min-w-0">
-          <p class="font-semibold truncate">
-            <%= u.full_name || u.username %>
+          <div class="flex items-center gap-2 min-w-0">
+            <p class="font-semibold truncate"><%= u.full_name || u.username %></p>
             <% if (u.id === it.diriSendiri) { %>
-              <span class="ml-1.5 text-[11px] font-normal text-slate-400">(kamu)</span>
+              <span class="text-[11px] font-normal text-slate-400 shrink-0">(kamu)</span>
             <% } %>
-          </p>
-          <p class="text-xs text-slate-400 mt-0.5">
+            <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full <%= u.role === 'admin' ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600' %>">
+              <%= u.role === "admin" ? "Admin CCIT" : "Kontributor" %>
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5 truncate">
             @<%= u.username %> · <%= u.jumlah_dokumen %> dokumen · gabung <%= it.formatTanggal(u.created_at) %>
           </p>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-3 shrink-0">
-        <span class="text-xs font-semibold px-2.5 py-1 rounded-full <%= u.role === 'admin' ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600' %>">
-          <%= u.role === "admin" ? "Admin CCIT" : "Kontributor" %>
-        </span>
-
         <form method="post" action="/studio/akun/<%= u.id %>/role" class="inline">
           <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'kontributor' : 'admin' %>" />
           <button type="submit" class="text-sm text-navy-700 hover:text-navy-900 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
