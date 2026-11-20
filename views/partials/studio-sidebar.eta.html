@@ -53,16 +53,16 @@
       <span class="bg-gold-500/15 text-gold-400 font-bold rounded-full w-9 h-9 grid place-items-center shrink-0 text-sm">
         <%= it.user ? it.user.username.charAt(0).toUpperCase() : "?" %>
       </span>
-      <div class="min-w-0 flex-1 pr-2">
+      <div class="min-w-0 flex-1">
         <p class="text-sm font-medium text-white truncate"><%= it.user ? it.user.username : "-" %></p>
         <p class="text-[11px] text-slate-400 leading-tight">
           <%= it.user && it.user.role === "admin" ? "Admin CCIT" : "Kontributor" %>
         </p>
       </div>
     </div>
-    <form method="post" action="/studio/logout" class="mt-3 flex justify-end">
+    <form method="post" action="/studio/logout" class="mt-3">
       <button type="submit"
-        class="inline-flex items-center gap-1.5 border border-white/20 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-500/15 hover:border-red-400/50 hover:text-red-300 transition-colors">
+        class="w-full inline-flex items-center justify-center gap-1.5 border border-white/20 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-red-500/15 hover:border-red-400/50 hover:text-red-300 transition-colors">
         <i class="bx bx-log-out text-base"></i> Keluar
       </button>
     </form>

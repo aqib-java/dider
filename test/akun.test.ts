@@ -216,4 +216,33 @@ describe("Akun — manajemen user (admin)", () => {
       // sudah tidak ada
     }
   });
+
+  test("topbar ramping: breadcrumb, tanpa tombol Upload & Lihat situs", async () => {
+    const app = createTestApp();
+    const cookie = await registerUser(app, "adminccit");
+
+    const html = await (await app.request("/studio/dokumen", { headers: { cookie } })).text();
+    const topbar = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
+
+    expect(topbar).toContain('aria-label="Breadcrumb"');
+    expect(topbar).toContain('href="/studio"'); // breadcrumb kembali ke dashboard
+    expect(topbar).toContain("Dokumen Saya");
+    expect(topbar).not.toContain("upload-modal"); // Upload tidak lagi di topbar
+    expect(topbar).not.toContain("Lihat situs");
+
+    // Aksi tetap tersedia di tempat yang tepat
+    expect(html).toContain('id="upload-modal"'); // modal masih ada
+    expect(html).toContain("bx bx-upload"); // tombol upload di halaman dokumen
+    expect(html).toContain("Lihat Situs"); // tautan situs tetap ada di sidebar
+
+    // Dashboard: breadcrumb tidak mengulang kata "Studio"
+    const dash = await (await app.request("/studio", { headers: { cookie } })).text();
+    const topbarDash = dash.slice(dash.indexOf("<header"), dash.indexOf("</header>"));
+    expect(topbarDash).toContain("Dashboard");
+    expect(topbarDash).not.toContain('href="/studio"');
+
+    // Kartu "Buka Halaman Publik" di dashboard dihapus (tidak berulang)
+    expect(dash).not.toContain("Buka Halaman Publik");
+    expect(dash).toContain("Ringkasan");
+  });
 });
