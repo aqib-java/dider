@@ -3,12 +3,32 @@ import type { Context } from "hono";
 import { randomUUID } from "crypto";
 import { unlinkSync, existsSync } from "fs";
 import type { Db } from "../db";
-import { ProjectModel } from "../models/project.model";
+import { ProjectModel, type Status } from "../models/project.model";
+import type { PublicUser } from "../models/user.model";
 import { requireAuth } from "../middleware/auth.middleware";
 import { view, redirect, flashSuccess, flashError } from "../view";
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_DIR = "uploads"; // harus sinkron dengan serveStatic /uploads/* di app.ts
+
+/** User yang sedang login (di-inject middleware locals). */
+function currentUser(c: Context): PublicUser | null {
+  return (c.get("user" as never) as PublicUser | null) ?? null;
+}
+
+function isAdmin(user: PublicUser | null): boolean {
+  return user?.role === "admin";
+}
+
+/**
+ * Admin boleh mengelola semua dokumen; kontributor hanya miliknya sendiri.
+ * Ini yang mencegah mahasiswa melihat/menghapus dokumen internal.
+ */
+function canManage(user: PublicUser | null, uploaderId: string | null): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return uploaderId === user.id;
+}
 
 /** Controller web: /studio/dokumen — upload PDF, daftar, trash, hapus, restore. */
 export function projectController(db: Db) {
@@ -21,13 +41,24 @@ export function projectController(db: Db) {
 
   const projects = new ProjectModel(db.sqlite);
 
-  // GET /studio/dokumen — daftar dokumen aktif + form upload
+  // GET /studio/dokumen — daftar dokumen milik sendiri (admin: semua) + tab status
   app.get("/dokumen", requireAuth(db), (c) => {
-    const dokumen = projects.list().map((d) => ({
-      ...d,
-      missing: !existsSync(d.pdf_path),
-    }));
-    return view(c, "studio/dokumen/index", { dokumen });
+    const user = currentUser(c);
+    const scope = isAdmin(user) ? null : (user?.id ?? "__none__");
+    const raw = c.req.query("status");
+    const status: Status = raw === "archived" ? "archived" : "published";
+
+    const dokumen = projects
+      .search({ status, uploaderId: scope })
+      .map((d) => ({ ...d, missing: !existsSync(d.pdf_path) }));
+
+    return view(c, "studio/dokumen/index", {
+      dokumen,
+      status,
+      stats: projects.stats(scope),
+      isAdmin: isAdmin(user),
+      scopeLabel: isAdmin(user) ? "Semua dokumen" : "Dokumen saya",
+    });
   });
 
   // POST /studio/dokumen — upload PDF
@@ -75,32 +106,86 @@ export function projectController(db: Db) {
 
   // GET /studio/dokumen/trash — daftar dokumen di trash
   app.get("/dokumen/trash", requireAuth(db), (c) => {
-    const dokumen = projects.listTrashed().map((d) => ({
-      ...d,
-      missing: !existsSync(d.pdf_path),
-    }));
-    return view(c, "studio/dokumen/trash", { dokumen });
+    const user = currentUser(c);
+    const scope = isAdmin(user) ? null : (user?.id ?? "__none__");
+    const dokumen = projects
+      .listTrashed(scope)
+      .map((d) => ({ ...d, missing: !existsSync(d.pdf_path) }));
+    return view(c, "studio/dokumen/trash", {
+      dokumen,
+      stats: projects.stats(scope),
+    });
+  });
+
+  // POST /studio/dokumen/:id/archive — arsipkan (sembunyi dari publik, bukan hapus)
+  app.post("/dokumen/:id/archive", requireAuth(db), (c) => {
+    const user = currentUser(c);
+    const doc = projects.findById(c.req.param("id"));
+    if (!doc) {
+      flashError(c, "Dokumen tidak ditemukan.");
+      return redirect(c, "/studio/dokumen");
+    }
+    if (!canManage(user, doc.uploader_id)) {
+      flashError(c, "Kamu tidak berhak mengubah dokumen ini.");
+      return redirect(c, "/studio/dokumen");
+    }
+    if (doc.status !== "published") {
+      flashError(c, "Hanya dokumen terbit yang bisa diarsipkan.");
+      return redirect(c, "/studio/dokumen");
+    }
+    projects.archive(doc.id);
+    flashSuccess(c, `Dokumen "${doc.nama}" diarsipkan.`);
+    return redirect(c, "/studio/dokumen");
+  });
+
+  // POST /studio/dokumen/:id/publish — terbitkan lagi dari arsip
+  app.post("/dokumen/:id/publish", requireAuth(db), (c) => {
+    const user = currentUser(c);
+    const doc = projects.findById(c.req.param("id"));
+    if (!doc) {
+      flashError(c, "Dokumen tidak ditemukan.");
+      return redirect(c, "/studio/dokumen?status=archived");
+    }
+    if (!canManage(user, doc.uploader_id)) {
+      flashError(c, "Kamu tidak berhak mengubah dokumen ini.");
+      return redirect(c, "/studio/dokumen?status=archived");
+    }
+    if (doc.status !== "archived") {
+      flashError(c, "Dokumen ini tidak sedang diarsipkan.");
+      return redirect(c, "/studio/dokumen?status=archived");
+    }
+    projects.publish(doc.id);
+    flashSuccess(c, `Dokumen "${doc.nama}" kembali terbit.`);
+    return redirect(c, "/studio/dokumen?status=archived");
   });
 
   // POST /studio/dokumen/:id/delete — soft delete (masuk trash). Hard delete
   // TIDAK lewat sini — wajib lewat /hard-delete eksplisit.
-  app.post("/dokumen/:id/delete", requireAuth(db), (c) => softDelete(c, projects));
+  app.post("/dokumen/:id/delete", requireAuth(db), (c) =>
+    softDelete(c, projects, currentUser(c))
+  );
 
   // POST /studio/dokumen/:id/hard-delete — hard delete permanen (dari trash)
-  app.post("/dokumen/:id/hard-delete", requireAuth(db), (c) => hardDelete(c, projects));
+  app.post("/dokumen/:id/hard-delete", requireAuth(db), (c) =>
+    hardDelete(c, projects, currentUser(c))
+  );
 
   // POST /studio/dokumen/:id/trash-and-delete — dari popup halaman utama:
   // pindahkan ke trash lalu hapus permanen dalam satu aksi eksplisit.
   app.post("/dokumen/:id/trash-and-delete", requireAuth(db), (c) =>
-    hardDelete(c, projects, { allowActive: true })
+    hardDelete(c, projects, currentUser(c), { allowActive: true })
   );
 
   // POST /studio/dokumen/:id/restore — restore dari trash
   app.post("/dokumen/:id/restore", requireAuth(db), (c) => {
     const id = c.req.param("id");
     const doc = projects.findById(id);
-    if (!doc || !doc.deleted_at) {
+    if (!doc || doc.status !== "trashed") {
       flashError(c, "Dokumen tidak ditemukan di trash.");
+      return redirect(c, "/studio/dokumen/trash");
+    }
+    if (!canManage(currentUser(c), doc.uploader_id)) {
+      flashError(c, "Kamu tidak berhak memulihkan dokumen ini.");
       return redirect(c, "/studio/dokumen/trash");
     }
     projects.restore(id);
@@ -119,14 +204,18 @@ export function projectController(db: Db) {
 }
 
 /** Soft delete: pindahkan ke trash. File PDF tetap di disk. */
-function softDelete(c: Context, projects: ProjectModel) {
+function softDelete(c: Context, projects: ProjectModel, user: PublicUser | null) {
   const id = c.req.param("id");
   const doc = projects.findById(id);
   if (!doc) {
     flashError(c, "Dokumen tidak ditemukan.");
     return redirect(c, "/studio/dokumen");
   }
-  if (doc.deleted_at) {
+  if (!canManage(user, doc.uploader_id)) {
+    flashError(c, "Kamu tidak berhak menghapus dokumen ini.");
+    return redirect(c, "/studio/dokumen");
+  }
+  if (doc.status === "trashed") {
     flashError(c, "Dokumen sudah ada di trash.");
     return redirect(c, "/studio/dokumen");
   }
@@ -139,6 +228,7 @@ function softDelete(c: Context, projects: ProjectModel) {
 function hardDelete(
   c: Context,
   projects: ProjectModel,
+  user: PublicUser | null,
   opts: { allowActive?: boolean } = {}
 ) {
   const id = c.req.param("id");
@@ -147,11 +237,15 @@ function hardDelete(
     flashError(c, "Dokumen tidak ditemukan.");
     return redirect(c, "/studio/dokumen/trash");
   }
-  if (!doc.deleted_at && !opts.allowActive) {
+  if (!canManage(user, doc.uploader_id)) {
+    flashError(c, "Kamu tidak berhak menghapus dokumen ini.");
+    return redirect(c, "/studio/dokumen");
+  }
+  if (doc.status !== "trashed" && !opts.allowActive) {
     flashError(c, "Dokumen belum di trash. Pindahkan ke trash dulu.");
     return redirect(c, "/studio/dokumen");
   }
-  const fromTrash = Boolean(doc.deleted_at);
+  const fromTrash = doc.status === "trashed";
   // Hapus baris dulu, lalu file. File orphan di-swallow (bukan kegagalan data).
   projects.delete(id);
   try {

@@ -1,45 +1,93 @@
 <% layout("/layouts/studio") %>
-<% it.title = "Dokumen — Dider" %>
-<% it.pageTitle = "Dokumen Saya" %>
+<% it.title = it.status === "archived" ? "Arsip — Dider" : "Dokumen — Dider" %>
+<% it.pageTitle = it.status === "archived" ? "Arsip" : "Dokumen" %>
 
-<div class="flex items-center justify-between gap-4 mb-5">
-  <p class="text-sm text-slate-500"><%= it.dokumen.length %> dokumen</p>
-  <div class="flex items-center gap-4">
-    <a href="/studio/dokumen/trash" class="text-sm text-navy-700 hover:underline"><i class="bx bx-trash"></i> Lihat trash</a>
-    <button type="button" onclick="document.getElementById('upload-modal').showModal()"
-      class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600"><i class="bx bx-plus"></i> Upload</button>
+<%
+  const tab = (key, label, jumlah, href) => {
+    const aktif = key === it.status;
+    const cls = aktif
+      ? "px-4 py-2 rounded-lg bg-navy-900 text-white shadow-sm"
+      : "px-4 py-2 rounded-lg text-slate-600 hover:text-navy-900";
+    return { label, jumlah, href, cls };
+  };
+  const tabs = [
+    tab("published", "Terbit", it.stats.published, "/studio/dokumen"),
+    tab("archived", "Arsip", it.stats.archived, "/studio/dokumen?status=archived"),
+  ];
+%>
+
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+  <div class="inline-flex bg-slate-100 p-1 rounded-xl text-sm font-semibold">
+    <% tabs.forEach(function (t) { %>
+      <a href="<%= t.href %>" class="<%= t.cls %>">
+        <%= t.label %> <span class="opacity-70">(<%= t.jumlah %>)</span>
+      </a>
+    <% }) %>
+    <a href="/studio/dokumen/trash"
+      class="px-4 py-2 rounded-lg text-slate-600 hover:text-navy-900">
+      Trash <span class="opacity-70">(<%= it.stats.trashed %>)</span>
+    </a>
   </div>
+  <button type="button" onclick="document.getElementById('upload-modal').showModal()"
+    class="bg-gold-500 text-navy-950 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gold-600"><i class="bx bx-plus"></i> Upload</button>
 </div>
+
+<p class="text-sm text-slate-500 mb-4">
+  <%= it.scopeLabel %> · <%= it.dokumen.length %> <%= it.status === "archived" ? "diarsipkan" : "terbit" %>
+</p>
 
 <% if (it.dokumen.length === 0) { %>
   <div class="bg-white border border-dashed border-slate-300 rounded-xl px-6 py-16 text-center">
-    <i class="bx bx-file-blank text-5xl text-slate-300"></i>
-    <p class="font-semibold text-navy-900 mt-3 mb-1">Belum ada dokumen</p>
-    <p class="text-sm text-slate-500 mb-5">Upload PDF pertama kamu!</p>
-    <button type="button" onclick="document.getElementById('upload-modal').showModal()"
-      class="bg-navy-900 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-navy-800"><i class="bx bx-upload"></i> Upload PDF</button>
+    <i class="bx <%= it.status === 'archived' ? 'bx-archive' : 'bx-file-blank' %> text-5xl text-slate-300"></i>
+    <p class="font-semibold text-navy-900 mt-3 mb-1">
+      <%= it.status === "archived" ? "Belum ada dokumen diarsipkan" : "Belum ada dokumen terbit" %>
+    </p>
+    <p class="text-sm text-slate-500 mb-5">
+      <%= it.status === "archived"
+        ? "Dokumen yang diarsipkan disembunyikan dari publik, tapi file & datanya tetap tersimpan."
+        : "Upload PDF pertama kamu!" %>
+    </p>
+    <% if (it.status !== "archived") { %>
+      <button type="button" onclick="document.getElementById('upload-modal').showModal()"
+        class="bg-navy-900 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-navy-800"><i class="bx bx-upload"></i> Upload PDF</button>
+    <% } %>
   </div>
 <% } else { %>
   <div class="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden">
     <% it.dokumen.forEach(function (d) { %>
-      <div data-doc-id="<%= d.id %>" data-doc-slug="<%= d.slug %>" class="px-5 sm:px-6 py-4 flex items-center justify-between gap-6 hover:bg-slate-50/70">
+      <div data-doc-id="<%= d.id %>" data-doc-slug="<%= d.slug %>"
+        class="px-5 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4 hover:bg-slate-50/70">
         <div class="min-w-0">
           <p class="font-semibold truncate"><%= d.nama %>
             <% if (d.missing) { %>
               <span class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">File hilang — upload ulang</span>
             <% } %>
           </p>
-          <p class="text-xs text-slate-400 mt-0.5"><%= d.views %>× dibaca · Diperbarui <%= it.formatTanggal(d.updated_at) %></p>
+          <p class="text-xs text-slate-400 mt-0.5">
+            <%= d.views %>× dibaca · Diperbarui <%= it.formatTanggal(d.updated_at) %>
+            <% if (it.isAdmin && d.uploader) { %> · oleh <%= d.uploader %><% } %>
+            <% if (d.status === "archived") { %> · Diarsipkan <%= it.formatTanggal(d.archived_at) %><% } %>
+          </p>
         </div>
-        <div class="flex items-center gap-5 shrink-0">
-          <a href="/majalah/<%= d.slug %>" target="_blank" rel="noopener"
-            class="text-navy-700 hover:underline text-sm"><i class="bx bx-book-open"></i> Baca</a>
+        <div class="flex items-center gap-4 shrink-0">
+          <% if (d.status === "published") { %>
+            <a href="/majalah/<%= d.slug %>" target="_blank" rel="noopener"
+              class="text-navy-700 hover:underline text-sm"><i class="bx bx-book-open"></i> Baca</a>
+            <form method="post" action="/studio/dokumen/<%= d.id %>/archive" class="inline">
+              <button type="submit" class="text-slate-600 hover:underline text-sm"><i class="bx bx-archive"></i> Arsipkan</button>
+            </form>
+          <% } else { %>
+            <form method="post" action="/studio/dokumen/<%= d.id %>/publish" class="inline">
+              <button type="submit" class="text-emerald-600 hover:underline text-sm"><i class="bx bx-upload"></i> Terbitkan</button>
+            </form>
+          <% } %>
           <button type="button" onclick="document.getElementById('delete-<%= d.id %>').showModal()"
             class="text-red-600 hover:underline text-sm"><i class="bx bx-trash-alt"></i> Hapus</button>
           <dialog id="delete-<%= d.id %>" class="m-auto rounded-2xl p-0 backdrop:bg-navy-950/60 w-[calc(100vw-2rem)] max-w-xs shadow-2xl">
             <form method="post" action="/studio/dokumen/<%= d.id %>/delete" class="w-80 p-6 space-y-4">
               <h2 class="font-bold text-navy-900">Hapus dokumen?</h2>
               <p class="text-sm text-slate-500"><%= d.nama %></p>
+              <p class="text-xs text-slate-400">Pindahkan ke Trash kalau masih mungkin dipakai lagi.</p>
               <div class="space-y-2">
                 <button name="mode" value="soft"
                   class="w-full bg-amber-500 text-white text-sm font-semibold py-2 rounded-lg hover:bg-amber-600">Pindahkan ke Trash</button>
@@ -55,3 +103,9 @@
     <% }) %>
   </div>
 <% } %>
+
+<div class="mt-5">
+  <a href="/studio/dokumen/trash" class="text-sm text-navy-700 hover:underline">
+    <i class="bx bx-trash"></i> Lihat Trash (<%= it.stats.trashed %>)
+  </a>
+</div>

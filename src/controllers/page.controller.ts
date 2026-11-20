@@ -76,7 +76,8 @@ function renderReader(
   projects: ProjectModel,
   doc: Project & { uploader: string | null }
 ) {
-  if (doc.deleted_at) {
+  // Hanya dokumen terbit yang boleh dibaca publik (arsip & trash tersembunyi).
+  if (doc.status !== "published") {
     flashError(c, "Dokumen tidak ditemukan.");
     return redirect(c, "/");
   }

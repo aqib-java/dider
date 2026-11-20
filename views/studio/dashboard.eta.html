@@ -2,10 +2,10 @@
 <% it.title = "Dashboard — Dider" %>
 <% it.pageTitle = "Dashboard" %>
 
-<div class="grid sm:grid-cols-3 gap-5 mb-7">
+<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-7">
   <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-navy-900">
-    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-file-blank text-lg text-navy-700"></i>Total Dokumen</p>
-    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.total %></p>
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-file-blank text-lg text-navy-700"></i>Terbit</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.published %></p>
     <a href="/studio/dokumen" class="text-sm text-navy-700 hover:underline">Kelola dokumen →</a>
   </div>
   <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-gold-500">
@@ -13,9 +13,14 @@
     <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.views %></p>
     <p class="text-sm text-slate-400">kali dibuka di reader</p>
   </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-slate-400">
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-archive text-lg text-navy-700"></i>Arsip</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.archived %></p>
+    <a href="/studio/dokumen?status=archived" class="text-sm text-navy-700 hover:underline">Lihat arsip →</a>
+  </div>
   <div class="bg-white border border-slate-200 rounded-xl p-5 border-t-4 border-t-slate-300">
-    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-trash text-lg text-navy-700"></i>Isi Trash</p>
-    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.trash %></p>
+    <p class="text-sm text-slate-500 flex items-center gap-2"><i class="bx bx-trash text-lg text-navy-700"></i>Trash</p>
+    <p class="text-4xl font-extrabold text-navy-900 leading-tight mt-1.5"><%= it.stats.trashed %></p>
     <a href="/studio/dokumen/trash" class="text-sm text-navy-700 hover:underline">Lihat trash →</a>
   </div>
 </div>
@@ -73,17 +78,21 @@
       <p class="font-semibold text-navy-900 mb-3">Ringkasan</p>
       <dl class="space-y-2.5 text-sm">
         <div class="flex items-center justify-between gap-3">
-          <dt class="text-slate-500">Dokumen aktif</dt>
-          <dd class="font-semibold text-navy-900"><%= it.stats.total %></dd>
+          <dt class="text-slate-500">Dokumen terbit</dt>
+          <dd class="font-semibold text-navy-900"><%= it.stats.published %></dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-slate-500">Diarsipkan</dt>
+          <dd class="font-semibold text-navy-900"><%= it.stats.archived %></dd>
         </div>
         <div class="flex items-center justify-between gap-3">
           <dt class="text-slate-500">Di trash</dt>
-          <dd class="font-semibold text-navy-900"><%= it.stats.trash %></dd>
+          <dd class="font-semibold text-navy-900"><%= it.stats.trashed %></dd>
         </div>
         <div class="flex items-center justify-between gap-3">
           <dt class="text-slate-500">Rata-rata dibaca</dt>
           <dd class="font-semibold text-navy-900">
-            <%= it.stats.total > 0 ? Math.round(it.stats.views / it.stats.total) : 0 %>×
+            <%= it.stats.published > 0 ? Math.round(it.stats.views / it.stats.published) : 0 %>×
           </dd>
         </div>
       </dl>
